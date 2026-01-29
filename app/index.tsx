@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { BleManager, Device, State } from "react-native-ble-plx";
+
 const manager = new BleManager();
 
 type DeviceWithDisplayName = Device & { displayName: string };
@@ -51,16 +52,19 @@ const Index = () => {
         );
         return granted === PermissionsAndroid.RESULTS.GRANTED;
       } else {
-        // Android 12+ (API 31+) needs SCAN and CONNECT
+        // Android 12+ permissions
         const result = await PermissionsAndroid.requestMultiple([
           PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
           PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
         ]);
 
         return (
           result["android.permission.BLUETOOTH_SCAN"] ===
             PermissionsAndroid.RESULTS.GRANTED &&
           result["android.permission.BLUETOOTH_CONNECT"] ===
+            PermissionsAndroid.RESULTS.GRANTED &&
+          result["android.permission.ACCESS_FINE_LOCATION"] ===
             PermissionsAndroid.RESULTS.GRANTED
         );
       }
@@ -105,7 +109,7 @@ const Index = () => {
   useEffect(() => {
     requestBluetoothPermission();
     const prepare = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       await SplashScreen.hideAsync();
     };
     prepare();
@@ -123,23 +127,15 @@ const Index = () => {
         setScannedDevices([]);
         setIsLoading(false);
         setLoadingMessage("");
-        // if (Platform.OS === "android") {
-        //   Alert.alert("Bluetooth Off", "Would you like to turn on Bluetooth?", [
-        //     { text: "Cancel", style: "cancel" },
-        //     { text: "Turn On", onPress: async () => await manager.enable() }, // Android only helper
-        //   ]);
-        // } else {
-        //   Alert.alert(
-        //     "Bluetooth Required",
-        //     "Please enable Bluetooth in your System Settings."
-        //   );
-        // }
       }
     }, true);
 
     return () => {
       subscription.remove();
+      // CRITICAL: Stop scanning and destroy manager on unmount
       manager.stopDeviceScan();
+      // Only destroy if you aren't using a persistent global manager
+      // manager.destroy();
     };
   }, [manager]);
 
