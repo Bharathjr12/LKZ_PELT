@@ -6,7 +6,6 @@ import {
   Dimensions,
   FlatList,
   Image,
-  Linking,
   Modal,
   PermissionsAndroid,
   Platform,
@@ -30,6 +29,7 @@ const Index = () => {
     [],
   );
   const [btState, setBtState] = useState<State>(State.Unknown);
+  const [btConnectionState, setBtConnectionState] = useState<boolean>(false);
   const [visible, setVisible] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
@@ -72,6 +72,30 @@ const Index = () => {
     return false;
   };
 
+  const checkConnection = async () => {
+    setIsLoading(true);
+    const deviceId = "94:51:DC:58:55:6A";
+    try {
+      const isConnected = await manager.isDeviceConnected(deviceId);
+      console.log("check here 1 = isConnected:", isConnected);
+      if (isConnected) {
+        console.log("check here 2 = isConnected:", isConnected);
+        setBtConnectionState(true);
+      } else {
+        console.log("check here 3 = isConnected:", isConnected);
+        setBtConnectionState(false);
+      }
+      setIsLoading(false);
+      setLoadingMessage("");
+      return isConnected;
+    } catch (error) {
+      console.error("Error checking connection status:", error);
+      setIsLoading(false);
+      setLoadingMessage("");
+      return false;
+    }
+  };
+
   const handleStartScan = async () => {
     setScannedDevices([]);
     setIsLoading(true);
@@ -80,6 +104,7 @@ const Index = () => {
     manager.startDeviceScan(null, null, (error, device) => {
       if (error) {
         setIsLoading(false);
+        setLoadingMessage("");
         return;
       }
       const displayName =
@@ -122,6 +147,7 @@ const Index = () => {
       setBtState(state);
       if (state === State.PoweredOn) {
         handleStartScan();
+        checkConnection();
       } else {
         stopScan(); // Safety: Stop scanning if BT is toggled off
         setScannedDevices([]);
@@ -139,19 +165,87 @@ const Index = () => {
     };
   }, [manager]);
 
+  const disconnectDevice = async () => {
+    const deviceId = "94:51:DC:58:55:6A";
+    try {
+      // This tells the Android Bluetooth stack to close the GATT server connection
+      await manager.cancelDeviceConnection(deviceId);
+      console.log("Disconnected successfully");
+
+      // Reset your local React state here
+      // setConnectedDevice(null);
+    } catch (error) {
+      // console.error("Disconnection failed:", error);
+      console.log("Disconnection failed:", error);
+    }
+  };
+
+  const ensureBluetoothEnabled = async () => {
+    if (Platform.OS === "ios") {
+      console.log(
+        "iOS: Cannot enable Bluetooth programmatically. Please turn it on in Settings.",
+      );
+      return;
+    }
+
+    try {
+      const state = await manager.state();
+      if (state !== "PoweredOn") {
+        alert("bluetooth device state 2 = " + state);
+        console.log("Bluetooth is off. Attempting to turn it on...");
+        // This physically toggles the Bluetooth switch on Android
+        await manager.enable();
+        console.log("Bluetooth is now ON.");
+      }
+    } catch (error) {
+      // This typically fails if BLUETOOTH_CONNECT permission is missing or denied
+      console.error("Failed to enable Bluetooth radio:", error);
+    }
+  };
+
+  const turnOffBluetooth = async () => {
+    try {
+      // This physically toggles the Bluetooth switch on the Android device
+      await manager.disable();
+      console.log("Bluetooth Radio turned OFF");
+      alert("Disconnected and Bluetooth turned OFF successfully");
+    } catch (error) {
+      // This usually fails if the user hasn't granted the "BLUETOOTH_ADMIN" permission
+      console.error("Could not turn off Bluetooth:", error);
+    }
+  };
+
   const connectToBtDevice = async () => {
-    handleStartScan();
-    setVisible(true);
+    if (btState === State.PoweredOn) {
+      handleStartScan();
+      setVisible(true);
+    } else {
+      ensureBluetoothEnabled();
+      // alert("Please turn on Bluetooth to connect to devices.");
+    }
   };
 
   const onClickPercentButtons = (btnType: string) => {
-    setPercentUsed(btnType);
+    if (btConnectionState) {
+      setPercentUsed(btnType);
+    } else {
+      alert("Please connect to LKZ_PELT Bluetooth device first.");
+    }
   };
   const onClickPoleButtons = (btnType: string) => {
-    setPoleUsed(btnType);
+    if (btConnectionState) {
+      setPoleUsed(btnType);
+    } else {
+      alert("Please connect to LKZ_PELT Bluetooth device first.");
+    }
   };
   const onClickOffButtons = (btnType: string) => {
     setOffUsed(btnType);
+    disconnectDevice();
+
+    if (Platform.OS === "android") {
+      turnOffBluetooth();
+    }
   };
 
   // Helper function to get button background color based on selection state
@@ -167,7 +261,7 @@ const Index = () => {
       : styles.buttonGrayBgColor;
   };
 
-  const onConnect = async (device: Device) => {
+  const connectToDevice = async (device: Device) => {
     try {
       // 1. Stop scanning before connecting (Crucial for stability)
       manager.stopDeviceScan();
@@ -178,24 +272,28 @@ const Index = () => {
       // 2. Establish Connection
       // timeout: optional milliseconds before failing
       setTimeout(() => {
+        checkConnection();
         setIsLoading(false); // Hide your loader
         setLoadingMessage("");
         onClose();
       }, 1000);
       const connectedDevice = await device.connect({ timeout: 1000 });
+
+      // 4. Set up Disconnection Listener
+      // This ensures your UI updates if the device goes out of range
+      connectedDevice.onDisconnected((error, disconnectedDevice) => {
+        console.warn("Device disconnected!", error);
+
+        // 1. Reset your React State (e.g., setConnectedDevice(null))
+        // 2. Stop any active monitoring/intervals
+        // 3. Optionally: Trigger a re-scan or show a "Reconnect" button
+      });
       // 3. Discover Services & Characteristics
       // You MUST do this before reading/writing anything
       await connectedDevice.discoverAllServicesAndCharacteristics();
 
-      // 4. Set up Disconnection Listener
-      // This ensures your UI updates if the device goes out of range
-      connectedDevice.onDisconnected((error, d) => {
-        console.log("Device Disconnected");
-        // Update your local state here (e.g., setConnectedDevice(null))
-      });
-
-      setIsLoading(false); // Hide your loader
-      setLoadingMessage("");
+      // setIsLoading(false); // Hide your loader
+      // setLoadingMessage("");
       return connectedDevice;
     } catch (error) {
       console.error("Connection Error:", error);
@@ -228,7 +326,7 @@ const Index = () => {
       </View>
     </Modal>
   );
-  console.log(poleUsed, percentUsed);
+
   return (
     <View style={styles.mainContainer} testID={testID.mainContainerTestid}>
       <BleLoader visible={isLoading} message={loadingMessage} />
@@ -278,11 +376,11 @@ const Index = () => {
 
             <View style={styles.statusButtonContainer}>
               <Pressable
-                disabled={btState === State.PoweredOn ? true : false}
+                disabled={true}
                 style={[
                   styles.pressableButtonStyle,
                   styles.curvedButton,
-                  btState === State.PoweredOn
+                  btConnectionState
                     ? styles.statusButtonEnabled
                     : styles.statusButtonDisabled,
                 ]}
@@ -291,29 +389,12 @@ const Index = () => {
                 accessibilityRole="button"
                 accessibilityLabel="Bluetooth status"
                 testID={testID.pressableStatusTestid}
-                onPress={async () => {
-                  if (btState !== State.PoweredOn) {
-                    try {
-                      // Modern Android (API 33+) requires sending an Intent for direct toggle request
-                      await Linking.sendIntent(
-                        "android.bluetooth.adapter.action.REQUEST_ENABLE",
-                      );
-                    } catch (error) {
-                      // Fallback: Open general Bluetooth settings if Intent fails
-                      console.warn(
-                        "Intent failed, opening settings instead",
-                        error,
-                      );
-                      Linking.sendIntent("android.settings.BLUETOOTH_SETTINGS");
-                    }
-                  }
-                }}
               >
                 <Text
                   style={styles.pressibleText}
                   testID={testID.pressableStatusTextTestid}
                 >
-                  {btState}
+                  {btConnectionState ? "Connected" : "Disconnected"}
                 </Text>
               </Pressable>
             </View>
@@ -531,7 +612,7 @@ const Index = () => {
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.deviceItem}
-                    onPress={() => onConnect(item)}
+                    onPress={() => connectToDevice(item)}
                   >
                     <View>
                       <Text style={styles.deviceName}>
