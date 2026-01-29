@@ -77,12 +77,9 @@ const Index = () => {
     const deviceId = "94:51:DC:58:55:6A";
     try {
       const isConnected = await manager.isDeviceConnected(deviceId);
-      console.log("check here 1 = isConnected:", isConnected);
       if (isConnected) {
-        console.log("check here 2 = isConnected:", isConnected);
         setBtConnectionState(true);
       } else {
-        console.log("check here 3 = isConnected:", isConnected);
         setBtConnectionState(false);
       }
       setIsLoading(false);
@@ -170,58 +167,68 @@ const Index = () => {
     try {
       // This tells the Android Bluetooth stack to close the GATT server connection
       await manager.cancelDeviceConnection(deviceId);
-      console.log("Disconnected successfully");
+      console.warn("Disconnected successfully");
 
       // Reset your local React state here
       // setConnectedDevice(null);
     } catch (error) {
       // console.error("Disconnection failed:", error);
-      console.log("Disconnection failed:", error);
+      console.warn("Disconnection failed:", error);
     }
   };
 
-  const ensureBluetoothEnabled = async () => {
-    if (Platform.OS === "ios") {
-      console.log(
-        "iOS: Cannot enable Bluetooth programmatically. Please turn it on in Settings.",
+  const toggleBluetooth = async (turnOn: boolean) => {
+    if (Platform.OS === "android" && Platform.Version >= 31) {
+      // 1. Request the specific permission required to toggle the radio
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
       );
-      return;
-    }
 
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        console.warn(
+          "Bluetooth Connect permission denied. Cannot enable radio.",
+        );
+        return;
+      }
+    }
     try {
-      const state = await manager.state();
-      if (state !== "PoweredOn") {
-        alert("bluetooth device state 2 = " + state);
-        console.log("Bluetooth is off. Attempting to turn it on...");
-        // This physically toggles the Bluetooth switch on Android
-        await manager.enable();
-        console.log("Bluetooth is now ON.");
+      if (Platform.OS === "android") {
+        if (turnOn) {
+          // Powers on the radio. Note: Requires BLUETOOTH_CONNECT permission
+          await manager.enable();
+          console.warn("Bluetooth Radio enabled via manager.enable()");
+        } else {
+          // Powers off the radio.
+          await manager.disable();
+          console.warn("Bluetooth Radio disabled via manager.disable()");
+        }
+      } else {
+        console.warn("iOS does not allow programmatic radio toggling.");
       }
     } catch (error) {
-      // This typically fails if BLUETOOTH_CONNECT permission is missing or denied
-      console.error("Failed to enable Bluetooth radio:", error);
+      console.error("Error toggling Bluetooth radio:", error);
     }
   };
 
-  const turnOffBluetooth = async () => {
-    try {
-      // This physically toggles the Bluetooth switch on the Android device
-      await manager.disable();
-      console.log("Bluetooth Radio turned OFF");
-      alert("Disconnected and Bluetooth turned OFF successfully");
-    } catch (error) {
-      // This usually fails if the user hasn't granted the "BLUETOOTH_ADMIN" permission
-      console.error("Could not turn off Bluetooth:", error);
-    }
-  };
+  // const turnOffBluetooth = async () => {
+  //   try {
+  //     // This physically toggles the Bluetooth switch on the Android device
+  //     await manager.disable();
+  //     console.log("Bluetooth Radio turned OFF");
+  //     alert("Disconnected and Bluetooth turned OFF successfully");
+  //   } catch (error) {
+  //     // This usually fails if the user hasn't granted the "BLUETOOTH_ADMIN" permission
+  //     console.error("Could not turn off Bluetooth:", error);
+  //   }
+  // };
 
   const connectToBtDevice = async () => {
     if (btState === State.PoweredOn) {
       handleStartScan();
       setVisible(true);
     } else {
-      ensureBluetoothEnabled();
-      // alert("Please turn on Bluetooth to connect to devices.");
+      toggleBluetooth(true);
+      console.warn("Please turn on Bluetooth to connect to devices.");
     }
   };
 
@@ -244,7 +251,8 @@ const Index = () => {
     disconnectDevice();
 
     if (Platform.OS === "android") {
-      turnOffBluetooth();
+      // turnOffBluetooth();
+      toggleBluetooth(false);
     }
   };
 
