@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { BleManager, Device, State } from "react-native-ble-plx";
+import { showToast } from "react-native-nitro-toast";
 
 const manager = new BleManager();
 
@@ -30,12 +31,71 @@ const Index = () => {
   );
   const [btState, setBtState] = useState<State>(State.Unknown);
   const [btConnectionState, setBtConnectionState] = useState<boolean>(false);
-  const [visible, setVisible] = useState<boolean>(false);
+  const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [percentUsed, setPercentUsed] = useState<string>("");
   const [poleUsed, setPoleUsed] = useState<string>("");
   const [offUsed, setOffUsed] = useState<string>("");
+
+  useEffect(() => {
+    requestBluetoothPermission();
+    const prepare = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await SplashScreen.hideAsync();
+    };
+    prepare();
+  }, []);
+
+  useEffect(() => {
+    setIsLoading(true);
+    setLoadingMessage("Initializing Bluetooth...");
+    const subscription = manager.onStateChange((state) => {
+      setBtState(state);
+      if (state === State.PoweredOn) {
+        handleStartScan();
+        setTimeout(checkConnection, 13000);
+        // checkConnection();
+      } else {
+        stopScan(); // Safety: Stop scanning if BT is toggled off
+        setScannedDevices([]);
+        setIsLoading(false);
+        setLoadingMessage("");
+      }
+    }, true);
+
+    return () => {
+      subscription.remove();
+      // CRITICAL: Stop scanning and destroy manager on unmount
+      manager.stopDeviceScan();
+      // Only destroy if you aren't using a persistent global manager
+      // manager.destroy();
+    };
+  }, [manager]);
+
+  const showToastMessage = (
+    message: string,
+    type: "success" | "error" | "warning" | "info",
+    title?: string,
+    position?: "top" | "bottom",
+  ) => {
+    showToast(message, {
+      type: type,
+      position: position || "top",
+      duration: 3000,
+      title: title || "",
+      backgroundColor:
+        type === "success"
+          ? "#4CAF50"
+          : type === "error"
+            ? "#F44336"
+            : type === "warning"
+              ? "#FF9800"
+              : "#2196F3",
+      messageColor: "#FFFFFF",
+      haptics: true,
+    });
+  };
 
   const requestBluetoothPermission = async () => {
     if (Platform.OS === "ios") {
@@ -72,27 +132,6 @@ const Index = () => {
     return false;
   };
 
-  const checkConnection = async () => {
-    setIsLoading(true);
-    const deviceId = "94:51:DC:58:55:6A";
-    try {
-      const isConnected = await manager.isDeviceConnected(deviceId);
-      if (isConnected) {
-        setBtConnectionState(true);
-      } else {
-        setBtConnectionState(false);
-      }
-      setIsLoading(false);
-      setLoadingMessage("");
-      return isConnected;
-    } catch (error) {
-      console.error("Error checking connection status:", error);
-      setIsLoading(false);
-      setLoadingMessage("");
-      return false;
-    }
-  };
-
   const handleStartScan = async () => {
     setScannedDevices([]);
     setIsLoading(true);
@@ -120,61 +159,34 @@ const Index = () => {
       }
     });
     setTimeout(stopScan, 10000);
+    setTimeout(checkConnection, 13000);
     setIsLoading(false);
     setLoadingMessage("");
   };
 
-  const stopScan = () => {
-    manager.stopDeviceScan();
-  };
-
-  useEffect(() => {
-    requestBluetoothPermission();
-    const prepare = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      await SplashScreen.hideAsync();
-    };
-    prepare();
-  }, []);
-
-  useEffect(() => {
+  const checkConnection = async () => {
     setIsLoading(true);
-    setLoadingMessage("Initializing Bluetooth...");
-    const subscription = manager.onStateChange((state) => {
-      setBtState(state);
-      if (state === State.PoweredOn) {
-        handleStartScan();
-        checkConnection();
-      } else {
-        stopScan(); // Safety: Stop scanning if BT is toggled off
-        setScannedDevices([]);
-        setIsLoading(false);
-        setLoadingMessage("");
-      }
-    }, true);
-
-    return () => {
-      subscription.remove();
-      // CRITICAL: Stop scanning and destroy manager on unmount
-      manager.stopDeviceScan();
-      // Only destroy if you aren't using a persistent global manager
-      // manager.destroy();
-    };
-  }, [manager]);
-
-  const disconnectDevice = async () => {
     const deviceId = "94:51:DC:58:55:6A";
     try {
-      // This tells the Android Bluetooth stack to close the GATT server connection
-      await manager.cancelDeviceConnection(deviceId);
-      console.warn("Disconnected successfully");
-
-      // Reset your local React state here
-      // setConnectedDevice(null);
+      const isConnected = await manager.isDeviceConnected(deviceId);
+      if (isConnected) {
+        setBtConnectionState(true);
+      } else {
+        setBtConnectionState(false);
+      }
+      setIsLoading(false);
+      setLoadingMessage("");
+      return isConnected;
     } catch (error) {
-      // console.error("Disconnection failed:", error);
-      console.warn("Disconnection failed:", error);
+      showToastMessage("Error checking connection status", "error");
+      setIsLoading(false);
+      setLoadingMessage("");
+      return false;
     }
+  };
+
+  const stopScan = () => {
+    manager.stopDeviceScan();
   };
 
   const toggleBluetooth = async (turnOn: boolean) => {
@@ -185,8 +197,9 @@ const Index = () => {
       );
 
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        console.warn(
+        showToastMessage(
           "Bluetooth Connect permission denied. Cannot enable radio.",
+          "error",
         );
         return;
       }
@@ -196,77 +209,36 @@ const Index = () => {
         if (turnOn) {
           // Powers on the radio. Note: Requires BLUETOOTH_CONNECT permission
           await manager.enable();
-          console.warn("Bluetooth Radio enabled via manager.enable()");
+          handleStartScan();
+          showToastMessage("Bluetooth turned on", "success");
         } else {
           // Powers off the radio.
           await manager.disable();
-          console.warn("Bluetooth Radio disabled via manager.disable()");
+          setTimeout(checkConnection, 1000);
+          showToastMessage("Bluetooth turned off", "success");
         }
       } else {
-        console.warn("iOS does not allow programmatic radio toggling.");
+        showToastMessage(
+          "iOS does not allow programmatic radio toggling.",
+          "error",
+        );
       }
     } catch (error) {
-      console.error("Error toggling Bluetooth radio:", error);
+      showToastMessage("Error toggling Bluetooth radio", "error");
     }
   };
-
-  // const turnOffBluetooth = async () => {
-  //   try {
-  //     // This physically toggles the Bluetooth switch on the Android device
-  //     await manager.disable();
-  //     console.log("Bluetooth Radio turned OFF");
-  //     alert("Disconnected and Bluetooth turned OFF successfully");
-  //   } catch (error) {
-  //     // This usually fails if the user hasn't granted the "BLUETOOTH_ADMIN" permission
-  //     console.error("Could not turn off Bluetooth:", error);
-  //   }
-  // };
 
   const connectToBtDevice = async () => {
     if (btState === State.PoweredOn) {
       handleStartScan();
-      setVisible(true);
+      setModalVisible(true);
     } else {
       toggleBluetooth(true);
-      console.warn("Please turn on Bluetooth to connect to devices.");
+      showToastMessage(
+        "Please turn on Bluetooth to connect to devices.",
+        "warning",
+      );
     }
-  };
-
-  const onClickPercentButtons = (btnType: string) => {
-    if (btConnectionState) {
-      setPercentUsed(btnType);
-    } else {
-      alert("Please connect to LKZ_PELT Bluetooth device first.");
-    }
-  };
-  const onClickPoleButtons = (btnType: string) => {
-    if (btConnectionState) {
-      setPoleUsed(btnType);
-    } else {
-      alert("Please connect to LKZ_PELT Bluetooth device first.");
-    }
-  };
-  const onClickOffButtons = (btnType: string) => {
-    setOffUsed(btnType);
-    disconnectDevice();
-
-    if (Platform.OS === "android") {
-      // turnOffBluetooth();
-      toggleBluetooth(false);
-    }
-  };
-
-  // Helper function to get button background color based on selection state
-  const getPercentButtonStyle = (btnValue: string) => {
-    return percentUsed === btnValue
-      ? styles.buttonGreenBgColor
-      : styles.buttonGrayBgColor;
-  };
-
-  const getPoleButtonStyle = (btnValue: string) => {
-    return poleUsed === btnValue
-      ? styles.buttonYellowBgColor
-      : styles.buttonGrayBgColor;
   };
 
   const connectToDevice = async (device: Device) => {
@@ -279,13 +251,13 @@ const Index = () => {
 
       // 2. Establish Connection
       // timeout: optional milliseconds before failing
+      const connectedDevice = await device.connect({ timeout: 1000 });
       setTimeout(() => {
         checkConnection();
         setIsLoading(false); // Hide your loader
         setLoadingMessage("");
         onClose();
       }, 1000);
-      const connectedDevice = await device.connect({ timeout: 1000 });
 
       // 4. Set up Disconnection Listener
       // This ensures your UI updates if the device goes out of range
@@ -314,8 +286,68 @@ const Index = () => {
     }
   };
 
+  const disconnectDevice = async () => {
+    const deviceId = "94:51:DC:58:55:6A";
+    try {
+      // This tells the Android Bluetooth stack to close the GATT server connection
+      await manager.cancelDeviceConnection(deviceId);
+      showToastMessage("Device Disconnected successfully", "success");
+
+      // Reset your local React state here
+      // setConnectedDevice(null);
+    } catch (error) {
+      // console.error("Disconnection failed:", error);
+      showToastMessage("Failed to disconnect device", "error");
+    }
+  };
+
+  const onClickOffButtons = (btnType: string) => {
+    setOffUsed(btnType);
+    disconnectDevice();
+
+    if (Platform.OS === "android") {
+      // turnOffBluetooth();
+      toggleBluetooth(false);
+    }
+  };
+
+  const onClickPercentButtons = (btnType: string) => {
+    if (btConnectionState) {
+      setPercentUsed(btnType);
+    } else {
+      showToastMessage(
+        "Please connect to LKZ_PELT Bluetooth device first.",
+        "warning",
+      );
+    }
+  };
+
+  const onClickPoleButtons = (btnType: string) => {
+    if (btConnectionState) {
+      setPoleUsed(btnType);
+    } else {
+      showToastMessage(
+        "Please connect to LKZ_PELT Bluetooth device first.",
+        "warning",
+      );
+    }
+  };
+
+  // Helper function to get button background color based on selection state
+  const getPercentButtonStyle = (btnValue: string) => {
+    return percentUsed === btnValue
+      ? styles.buttonGreenBgColor
+      : styles.buttonGrayBgColor;
+  };
+
+  const getPoleButtonStyle = (btnValue: string) => {
+    return poleUsed === btnValue
+      ? styles.buttonYellowBgColor
+      : styles.buttonGrayBgColor;
+  };
+
   const onClose = () => {
-    setVisible(false);
+    setModalVisible(false);
   };
 
   const BleLoader = ({
@@ -597,7 +629,7 @@ const Index = () => {
           </View>
         </View>
         <Modal
-          visible={visible}
+          visible={modalVisible}
           transparent={true}
           animationType="slide"
           onRequestClose={onClose}
