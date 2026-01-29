@@ -333,7 +333,6 @@ const Index = () => {
     }
   };
 
-  // Helper function to get button background color based on selection state
   const getPercentButtonStyle = (btnValue: string) => {
     return percentUsed === btnValue
       ? styles.buttonGreenBgColor
