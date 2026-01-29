@@ -26,6 +26,7 @@ type DeviceWithDisplayName = Device & { displayName: string };
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const Index = () => {
+  const MY_TARGET_ID = "94:51:DC:58:55:6A";
   const [scannedDevices, setScannedDevices] = useState<DeviceWithDisplayName[]>(
     [],
   );
@@ -166,7 +167,7 @@ const Index = () => {
 
   const checkConnection = async () => {
     setIsLoading(true);
-    const deviceId = "94:51:DC:58:55:6A";
+    const deviceId = MY_TARGET_ID;
     try {
       const isConnected = await manager.isDeviceConnected(deviceId);
       if (isConnected) {
@@ -253,6 +254,14 @@ const Index = () => {
   };
 
   const connectToDevice = async (device: Device) => {
+    if (device.id !== MY_TARGET_ID) {
+      showToastMessage(
+        "Access Denied: This app is restricted to LKZ_PELT hardware.",
+        "error",
+      );
+      return;
+    }
+
     try {
       // 1. Stop scanning before connecting (Crucial for stability)
       manager.stopDeviceScan();
@@ -301,7 +310,7 @@ const Index = () => {
   };
 
   const disconnectDevice = async () => {
-    const deviceId = "94:51:DC:58:55:6A";
+    const deviceId = MY_TARGET_ID;
     try {
       // This tells the Android Bluetooth stack to close the GATT server connection
       await manager.cancelDeviceConnection(deviceId);
