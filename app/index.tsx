@@ -92,7 +92,7 @@ const Index = () => {
             : type === "warning"
               ? "#FF9800"
               : "#2196F3",
-      messageColor: "#FFFFFF",
+      messageColor: "#010101",
       haptics: true,
     });
   };
