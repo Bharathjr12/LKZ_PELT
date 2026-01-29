@@ -190,20 +190,31 @@ const Index = () => {
   };
 
   const toggleBluetooth = async (turnOn: boolean) => {
-    if (Platform.OS === "android" && Platform.Version >= 31) {
+    if (Platform.OS === "android") {
       // 1. Request the specific permission required to toggle the radio
+      const hasPermission = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+      );
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
       );
 
-      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        showToastMessage(
-          "Bluetooth Connect permission denied. Cannot enable radio.",
-          "error",
+      if (!hasPermission) {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
         );
-        return;
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          {
+            showToastMessage(
+              "Bluetooth Connect permission denied. Cannot enable.",
+              "error",
+            );
+            return;
+          }
+        }
       }
     }
+
     try {
       if (Platform.OS === "android") {
         if (turnOn) {
@@ -252,12 +263,6 @@ const Index = () => {
       // 2. Establish Connection
       // timeout: optional milliseconds before failing
       const connectedDevice = await device.connect({ timeout: 1000 });
-      setTimeout(() => {
-        checkConnection();
-        setIsLoading(false); // Hide your loader
-        setLoadingMessage("");
-        onClose();
-      }, 1000);
 
       // 4. Set up Disconnection Listener
       // This ensures your UI updates if the device goes out of range
@@ -271,18 +276,27 @@ const Index = () => {
       // 3. Discover Services & Characteristics
       // You MUST do this before reading/writing anything
       await connectedDevice.discoverAllServicesAndCharacteristics();
-
+      if (Platform.OS === "android") {
+        await connectedDevice.requestMTU(512);
+      }
       // setIsLoading(false); // Hide your loader
       // setLoadingMessage("");
-      return connectedDevice;
+      setTimeout(() => {
+        checkConnection();
+        setIsLoading(false); // Hide your loader
+        setLoadingMessage("");
+        onClose();
+      }, 1500);
     } catch (error) {
       console.error("Connection Error:", error);
       setIsLoading(false); // Hide your loader
       setLoadingMessage("");
+      checkConnection();
       // Handle specific errors like 'Device is already connected'
     } finally {
       setIsLoading(false); // Hide your loader
       setLoadingMessage("");
+      checkConnection();
     }
   };
 
