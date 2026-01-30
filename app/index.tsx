@@ -51,7 +51,7 @@ const Index = () => {
 
         // Increase Splash Screen time (e.g., 3 seconds)
         await new Promise(async (resolve) =>
-          setTimeout(() => SplashScreen.hideAsync().then(resolve), 3000),
+          setTimeout(() => SplashScreen.hideAsync().then(resolve), 5000),
         );
       } catch (e) {
         console.warn(e);
