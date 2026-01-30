@@ -15,7 +15,16 @@
       "barStyle": "dark-content",
       "backgroundColor": "#ffffff"
     },
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#ffffff"
+    },
     "android": {
+      "splash": {
+        "image": "./assets/images/splash.png",
+        "resizeMode": "cover"
+      },
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/icon.png"
