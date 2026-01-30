@@ -15,18 +15,7 @@
       "barStyle": "dark-content",
       "backgroundColor": "#ffffff"
     },
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#ffffff",
-      "imageWidth": 350
-    },
     "android": {
-      "splash": {
-        "image": "./assets/images/splash.png",
-        "resizeMode": "cover",
-        "imageWidth": 350
-      },
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/icon.png"
@@ -63,8 +52,7 @@
         {
           "backgroundColor": "#ffffff",
           "image": "./assets/images/splash.png",
-          "resizeMode": "cover",
-          "imageWidth": 350
+          "resizeMode": "cover"
         }
       ]
     ],
