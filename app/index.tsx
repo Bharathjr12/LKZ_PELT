@@ -51,7 +51,7 @@ const Index = () => {
         // Pre-load fonts, make API calls, or check BLE permissions
 
         // Increase Splash Screen time (e.g., 3 seconds)
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       } catch (e) {
         console.warn(e);
       } finally {
