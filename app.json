@@ -45,7 +45,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       [
@@ -54,6 +54,14 @@
           "isBackgroundEnabled": true,
           "modes": ["central"],
           "bluetoothAlwaysPermission": "Allow LKZ_PELT to use Bluetooth."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/images/splash.png",
+          "resizeMode": "contain"
         }
       ]
     ],
