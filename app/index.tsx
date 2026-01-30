@@ -1,5 +1,4 @@
 import { testID } from "@/constants/testId";
-// import { SplashScreen } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import {
@@ -51,7 +50,9 @@ const Index = () => {
         // Pre-load fonts, make API calls, or check BLE permissions
 
         // Increase Splash Screen time (e.g., 3 seconds)
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await new Promise(async (resolve) =>
+          setTimeout(() => SplashScreen.hideAsync().then(resolve), 3000),
+        );
       } catch (e) {
         console.warn(e);
       } finally {
