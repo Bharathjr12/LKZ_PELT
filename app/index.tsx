@@ -1,5 +1,6 @@
 import { testID } from "@/constants/testId";
-import { SplashScreen } from "expo-router";
+// import { SplashScreen } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +26,8 @@ type DeviceWithDisplayName = Device & { displayName: string };
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+SplashScreen.preventAutoHideAsync();
+
 const Index = () => {
   const MY_TARGET_ID = "94:51:DC:58:55:6A";
   const [scannedDevices, setScannedDevices] = useState<DeviceWithDisplayName[]>(
@@ -40,12 +43,24 @@ const Index = () => {
   const [offUsed, setOffUsed] = useState<string>("");
 
   useEffect(() => {
-    requestBluetoothPermission();
-    const prepare = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      await SplashScreen.hideAsync();
+    const initializeApp = async () => {
+      requestBluetoothPermission();
+
+      try {
+        // --- YOUR BLE INIT LOGIC HERE ---
+        // Pre-load fonts, make API calls, or check BLE permissions
+
+        // Increase Splash Screen time (e.g., 3 seconds)
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        // Note: setAppIsReady and prepare() are called but not defined in this file
+        // Make sure these functions exist or remove them if not needed
+      }
     };
-    prepare();
+
+    initializeApp();
   }, []);
 
   useEffect(() => {
