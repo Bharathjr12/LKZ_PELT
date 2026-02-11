@@ -40,6 +40,7 @@ const Index = () => {
   const [percentUsed, setPercentUsed] = useState<string>("");
   const [poleUsed, setPoleUsed] = useState<string>("");
   const [offUsed, setOffUsed] = useState<string>("");
+  const [appIsReady, setAppIsReady] = useState(false);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -50,8 +51,12 @@ const Index = () => {
         // Pre-load fonts, make API calls, or check BLE permissions
 
         // Increase Splash Screen time (e.g., 3 seconds)
+        SplashScreen.hideAsync();
         await new Promise(async (resolve) =>
-          setTimeout(() => SplashScreen.hideAsync().then(resolve), 5000),
+          setTimeout(
+            () => hideOriginalSplashShowJSSplashScreen().then(resolve),
+            5000,
+          ),
         );
       } catch (e) {
         console.warn(e);
@@ -89,6 +94,11 @@ const Index = () => {
       // manager.destroy();
     };
   }, [manager]);
+
+  const hideOriginalSplashShowJSSplashScreen = async () => {
+    setAppIsReady(true);
+    return true;
+  };
 
   const showToastMessage = (
     message: string,
@@ -404,317 +414,340 @@ const Index = () => {
       </View>
     </Modal>
   );
-
-  return (
-    <View style={styles.mainContainer} testID={testID.mainContainerTestid}>
-      <BleLoader visible={isLoading} message={loadingMessage} />
-      <View style={styles.imageContainer} testID={testID.imageContainerTestid}>
+  if (!appIsReady) {
+    // This is your CUSTOM full-screen splash screen
+    return (
+      <View style={styles.container}>
         <Image
-          source={require("../assets/images/banner.png")}
-          style={styles.headerLogo}
-          resizeMode="contain"
-          testID={testID.imageContainerImageTestid}
+          source={require("../assets/images/splash.png")}
+          style={styles.fullScreenImage}
+          resizeMode="cover"
         />
       </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        testID={testID.scrollViewTestid}
-      >
-        <View style={styles.ScrollViewMainContainer}>
-          <View
-            style={styles.mainButtonsContainer}
-            testID={testID.buttonContainerTestid}
-          >
-            <View style={styles.connectButtonContainer}>
-              <Pressable
-                onPress={connectToBtDevice}
-                style={({ pressed }) => [
-                  [
-                    styles.pressableButtonStyle,
-                    styles.curvedButton,
-                    styles.connectButtnBgColor,
-                  ],
-                  pressed && styles.pressibleCompPressed,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Connect to Bluetooth device"
-                testID={testID.pressableConnectTestid}
-              >
-                <Text
-                  style={styles.pressibleText}
-                  testID={testID.pressableConnectTextTestid}
-                >
-                  Connect
-                </Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.statusButtonContainer}>
-              <Pressable
-                disabled={true}
-                style={[
-                  styles.pressableButtonStyle,
-                  styles.curvedButton,
-                  btConnectionState
-                    ? styles.statusButtonEnabled
-                    : styles.statusButtonDisabled,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Bluetooth status"
-                testID={testID.pressableStatusTestid}
-              >
-                <Text
-                  style={styles.pressibleText}
-                  testID={testID.pressableStatusTextTestid}
-                >
-                  {btConnectionState ? "Connected" : "Disconnected"}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-          <View
-            style={styles.secondButtonsContainer}
-            testID={testID.buttonContainerBodyTestid}
-          >
-            <View style={styles.secondButtonFirstRowContainer}>
-              <Pressable
-                onPress={() => {
-                  onClickOffButtons("OFF");
-                }}
-                style={({ pressed }) => [
-                  styles.pressableButtonStyle,
-                  styles.circleButton,
-                  styles.circleButtonMarginVertical,
-                  offUsed === "OFF"
-                    ? styles.buttonRedBgColor
-                    : styles.buttonRedBgColor,
-                  pressed && styles.pressibleCompPressed,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Turn off device"
-                testID={testID.pressableOffTestid}
-              >
-                <Text testID={testID.pressableOffTextTestid}>OFF</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  onClickPercentButtons("25%");
-                }}
-                style={({ pressed }) => [
-                  styles.pressableButtonStyle,
-                  styles.circleButton,
-                  styles.circleButtonMarginVertical,
-                  getPercentButtonStyle("25%"),
-                  pressed && styles.pressibleCompPressed,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Turn 25% device"
-                testID={testID.pressable25Testid}
-              >
-                {percentUsed === "25%" && (
-                  <Text testID={testID.pressable25TextTestid}>25%</Text>
-                )}
-                {percentUsed !== "25%" && (
-                  <Text testID={`${testID.pressable25TextTestid}Second`}>
-                    25%
-                  </Text>
-                )}
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  onClickPercentButtons("50%");
-                }}
-                style={({ pressed }) => [
-                  styles.pressableButtonStyle,
-                  styles.circleButton,
-                  styles.circleButtonMarginVertical,
-                  getPercentButtonStyle("50%"),
-                  pressed && styles.pressibleCompPressed,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Turn 50% device"
-                testID={testID.pressable50Testid}
-              >
-                {percentUsed === "50%" && (
-                  <Text testID={testID.pressable50TextTestid}>50%</Text>
-                )}
-                {percentUsed !== "50%" && (
-                  <Text testID={`${testID.pressable50TextTestid}Second`}>
-                    50%
-                  </Text>
-                )}
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  onClickPercentButtons("75%");
-                }}
-                style={({ pressed }) => [
-                  styles.pressableButtonStyle,
-                  styles.circleButton,
-                  styles.circleButtonMarginVertical,
-                  getPercentButtonStyle("75%"),
-                  pressed && styles.pressibleCompPressed,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Turn 75% device"
-                testID={testID.pressable75Testid}
-              >
-                {percentUsed === "75%" && (
-                  <Text testID={testID.pressable75TextTestid}>75%</Text>
-                )}
-                {percentUsed !== "75%" && (
-                  <Text testID={`${testID.pressable75TextTestid}Second`}>
-                    75%
-                  </Text>
-                )}
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  onClickPercentButtons("100%");
-                }}
-                style={({ pressed }) => [
-                  styles.pressableButtonStyle,
-                  styles.circleButton,
-                  styles.circleButtonMarginVertical,
-                  getPercentButtonStyle("100%"),
-                  pressed && styles.pressibleCompPressed,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Turn 100% device"
-                testID={testID.pressable100Testid}
-              >
-                {percentUsed === "100%" && (
-                  <Text testID={testID.pressable100TextTestid}>100%</Text>
-                )}
-                {percentUsed !== "100%" && (
-                  <Text testID={`${testID.pressable100TextTestid}Second`}>
-                    100%
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-            <View style={styles.secondButtonSecondRowContainer}>
-              <Pressable
-                onPress={() => {
-                  onClickPoleButtons("POLE UP");
-                }}
-                style={({ pressed }) => [
-                  styles.pressableButtonStyle,
-                  styles.curvedButton,
-                  styles.curveButtonMarginVertical,
-                  getPoleButtonStyle("POLE UP"),
-                  pressed && styles.pressibleCompPressed,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Pole up device"
-                testID={testID.pressablePoleupTestid}
-              >
-                {poleUsed === "POLE UP" && (
-                  <Text testID={testID.pressablePoleupTextTestid}>POLE UP</Text>
-                )}
-                {poleUsed !== "POLE UP" && (
-                  <Text testID={`${testID.pressablePoleupTextTestid}Second`}>
-                    POLE UP
-                  </Text>
-                )}
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  onClickPoleButtons("POLE DOWN");
-                }}
-                style={({ pressed }) => [
-                  styles.pressableButtonStyle,
-                  styles.curvedButton,
-                  styles.curveButtonMarginVertical,
-                  getPoleButtonStyle("POLE DOWN"),
-                  pressed && styles.pressibleCompPressed,
-                ]}
-                android_ripple={styles.pressableAndroidRipple}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Pole down device"
-                testID={testID.pressablePoledownTestid}
-              >
-                {poleUsed === "POLE DOWN" && (
-                  <Text testID={testID.pressablePoledownTextTestid}>
-                    POLE DOWN
-                  </Text>
-                )}
-                {poleUsed !== "POLE DOWN" && (
-                  <Text testID={`${testID.pressablePoledownTextTestid}Second`}>
-                    POLE DOWN
-                  </Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        </View>
-        <Modal
-          visible={modalVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={onClose}
-          statusBarTranslucent={true}
+    );
+  } else {
+    return (
+      <View style={styles.mainContainer} testID={testID.mainContainerTestid}>
+        <BleLoader visible={isLoading} message={loadingMessage} />
+        <View
+          style={styles.imageContainer}
+          testID={testID.imageContainerTestid}
         >
-          <View style={styles.overlay}>
-            <View style={styles.modalContainer}>
-              <View style={styles.header}>
-                <Text style={styles.title}>Available Devices</Text>
-                <TouchableOpacity onPress={onClose}>
-                  <Text style={styles.closeBtn}>Close</Text>
-                </TouchableOpacity>
+          <Image
+            source={require("../assets/images/banner.png")}
+            style={styles.headerLogo}
+            resizeMode="contain"
+            testID={testID.imageContainerImageTestid}
+          />
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          testID={testID.scrollViewTestid}
+        >
+          <View style={styles.ScrollViewMainContainer}>
+            <View
+              style={styles.mainButtonsContainer}
+              testID={testID.buttonContainerTestid}
+            >
+              <View style={styles.connectButtonContainer}>
+                <Pressable
+                  onPress={connectToBtDevice}
+                  style={({ pressed }) => [
+                    [
+                      styles.pressableButtonStyle,
+                      styles.curvedButton,
+                      styles.connectButtnBgColor,
+                    ],
+                    pressed && styles.pressibleCompPressed,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Connect to Bluetooth device"
+                  testID={testID.pressableConnectTestid}
+                >
+                  <Text
+                    style={styles.pressibleText}
+                    testID={testID.pressableConnectTextTestid}
+                  >
+                    Connect
+                  </Text>
+                </Pressable>
               </View>
 
-              <FlatList
-                data={scannedDevices}
-                keyExtractor={(item) => item.id}
-                // This is key: it allows the list to shrink/grow based on items
-                contentContainerStyle={styles.listContent}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.deviceItem}
-                    onPress={() => connectToDevice(item)}
+              <View style={styles.statusButtonContainer}>
+                <Pressable
+                  disabled={true}
+                  style={[
+                    styles.pressableButtonStyle,
+                    styles.curvedButton,
+                    btConnectionState
+                      ? styles.statusButtonEnabled
+                      : styles.statusButtonDisabled,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Bluetooth status"
+                  testID={testID.pressableStatusTestid}
+                >
+                  <Text
+                    style={styles.pressibleText}
+                    testID={testID.pressableStatusTextTestid}
                   >
-                    <View>
-                      <Text style={styles.deviceName}>
-                        {item.localName || item.name || "Unknown Device"}
-                      </Text>
-                      <Text style={styles.deviceId}>{item.id}</Text>
-                    </View>
-                    <Text style={styles.rssi}>{item.rssi} dBm</Text>
-                  </TouchableOpacity>
-                )}
-                ListEmptyComponent={
-                  <Text style={styles.emptyText}>Searching for devices...</Text>
-                }
-              />
+                    {btConnectionState ? "Connected" : "Disconnected"}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+            <View
+              style={styles.secondButtonsContainer}
+              testID={testID.buttonContainerBodyTestid}
+            >
+              <View style={styles.secondButtonFirstRowContainer}>
+                <Pressable
+                  onPress={() => {
+                    onClickOffButtons("OFF");
+                  }}
+                  style={({ pressed }) => [
+                    styles.pressableButtonStyle,
+                    styles.circleButton,
+                    styles.circleButtonMarginVertical,
+                    offUsed === "OFF"
+                      ? styles.buttonRedBgColor
+                      : styles.buttonRedBgColor,
+                    pressed && styles.pressibleCompPressed,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Turn off device"
+                  testID={testID.pressableOffTestid}
+                >
+                  <Text testID={testID.pressableOffTextTestid}>OFF</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    onClickPercentButtons("25%");
+                  }}
+                  style={({ pressed }) => [
+                    styles.pressableButtonStyle,
+                    styles.circleButton,
+                    styles.circleButtonMarginVertical,
+                    getPercentButtonStyle("25%"),
+                    pressed && styles.pressibleCompPressed,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Turn 25% device"
+                  testID={testID.pressable25Testid}
+                >
+                  {percentUsed === "25%" && (
+                    <Text testID={testID.pressable25TextTestid}>25%</Text>
+                  )}
+                  {percentUsed !== "25%" && (
+                    <Text testID={`${testID.pressable25TextTestid}Second`}>
+                      25%
+                    </Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    onClickPercentButtons("50%");
+                  }}
+                  style={({ pressed }) => [
+                    styles.pressableButtonStyle,
+                    styles.circleButton,
+                    styles.circleButtonMarginVertical,
+                    getPercentButtonStyle("50%"),
+                    pressed && styles.pressibleCompPressed,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Turn 50% device"
+                  testID={testID.pressable50Testid}
+                >
+                  {percentUsed === "50%" && (
+                    <Text testID={testID.pressable50TextTestid}>50%</Text>
+                  )}
+                  {percentUsed !== "50%" && (
+                    <Text testID={`${testID.pressable50TextTestid}Second`}>
+                      50%
+                    </Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    onClickPercentButtons("75%");
+                  }}
+                  style={({ pressed }) => [
+                    styles.pressableButtonStyle,
+                    styles.circleButton,
+                    styles.circleButtonMarginVertical,
+                    getPercentButtonStyle("75%"),
+                    pressed && styles.pressibleCompPressed,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Turn 75% device"
+                  testID={testID.pressable75Testid}
+                >
+                  {percentUsed === "75%" && (
+                    <Text testID={testID.pressable75TextTestid}>75%</Text>
+                  )}
+                  {percentUsed !== "75%" && (
+                    <Text testID={`${testID.pressable75TextTestid}Second`}>
+                      75%
+                    </Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    onClickPercentButtons("100%");
+                  }}
+                  style={({ pressed }) => [
+                    styles.pressableButtonStyle,
+                    styles.circleButton,
+                    styles.circleButtonMarginVertical,
+                    getPercentButtonStyle("100%"),
+                    pressed && styles.pressibleCompPressed,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Turn 100% device"
+                  testID={testID.pressable100Testid}
+                >
+                  {percentUsed === "100%" && (
+                    <Text testID={testID.pressable100TextTestid}>100%</Text>
+                  )}
+                  {percentUsed !== "100%" && (
+                    <Text testID={`${testID.pressable100TextTestid}Second`}>
+                      100%
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
+              <View style={styles.secondButtonSecondRowContainer}>
+                <Pressable
+                  onPress={() => {
+                    onClickPoleButtons("POLE UP");
+                  }}
+                  style={({ pressed }) => [
+                    styles.pressableButtonStyle,
+                    styles.curvedButton,
+                    styles.curveButtonMarginVertical,
+                    getPoleButtonStyle("POLE UP"),
+                    pressed && styles.pressibleCompPressed,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Pole up device"
+                  testID={testID.pressablePoleupTestid}
+                >
+                  {poleUsed === "POLE UP" && (
+                    <Text testID={testID.pressablePoleupTextTestid}>
+                      POLE UP
+                    </Text>
+                  )}
+                  {poleUsed !== "POLE UP" && (
+                    <Text testID={`${testID.pressablePoleupTextTestid}Second`}>
+                      POLE UP
+                    </Text>
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    onClickPoleButtons("POLE DOWN");
+                  }}
+                  style={({ pressed }) => [
+                    styles.pressableButtonStyle,
+                    styles.curvedButton,
+                    styles.curveButtonMarginVertical,
+                    getPoleButtonStyle("POLE DOWN"),
+                    pressed && styles.pressibleCompPressed,
+                  ]}
+                  android_ripple={styles.pressableAndroidRipple}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Pole down device"
+                  testID={testID.pressablePoledownTestid}
+                >
+                  {poleUsed === "POLE DOWN" && (
+                    <Text testID={testID.pressablePoledownTextTestid}>
+                      POLE DOWN
+                    </Text>
+                  )}
+                  {poleUsed !== "POLE DOWN" && (
+                    <Text
+                      testID={`${testID.pressablePoledownTextTestid}Second`}
+                    >
+                      POLE DOWN
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
             </View>
           </View>
-        </Modal>
-      </ScrollView>
-    </View>
-  );
+          <Modal
+            visible={modalVisible}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={onClose}
+            statusBarTranslucent={true}
+          >
+            <View style={styles.overlay}>
+              <View style={styles.modalContainer}>
+                <View style={styles.header}>
+                  <Text style={styles.title}>Available Devices</Text>
+                  <TouchableOpacity onPress={onClose}>
+                    <Text style={styles.closeBtn}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <FlatList
+                  data={scannedDevices}
+                  keyExtractor={(item) => item.id}
+                  // This is key: it allows the list to shrink/grow based on items
+                  contentContainerStyle={styles.listContent}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.deviceItem}
+                      onPress={() => connectToDevice(item)}
+                    >
+                      <View>
+                        <Text style={styles.deviceName}>
+                          {item.localName || item.name || "Unknown Device"}
+                        </Text>
+                        <Text style={styles.deviceId}>{item.id}</Text>
+                      </View>
+                      <Text style={styles.rssi}>{item.rssi} dBm</Text>
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                      Searching for devices...
+                    </Text>
+                  }
+                />
+              </View>
+            </View>
+          </Modal>
+        </ScrollView>
+      </View>
+    );
+  }
 };
 export default Index;
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
+  fullScreenImage: { width: "100%", height: "100%" },
   mainContainer: {
     flex: 1,
     backgroundColor: "#ffffffff",

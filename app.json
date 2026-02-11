@@ -4,7 +4,7 @@
     "slug": "LKZ_PELT",
     "version": "1.0.0",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
