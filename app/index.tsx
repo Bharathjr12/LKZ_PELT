@@ -746,7 +746,7 @@ const Index = () => {
 export default Index;
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, padding: 20, backgroundColor: "#ffffffff" },
   fullScreenImage: { width: "100%", height: "100%" },
   mainContainer: {
     flex: 1,
