@@ -3,11 +3,6 @@
     "name": "LKZ_PELT",
     "slug": "LKZ_PELT",
     "version": "1.0.0",
-    "splash": {
-      // "image": "./assets/images/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#ffffff"
-    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lkzpelt",
@@ -50,6 +45,14 @@
           "isBackgroundEnabled": true,
           "modes": ["central"],
           "bluetoothAlwaysPermission": "Allow LKZ_PELT to use Bluetooth."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/images/splash.png",
+          "resizeMode": "cover"
         }
       ]
     ],
