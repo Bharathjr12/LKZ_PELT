@@ -41,6 +41,7 @@ const Index = () => {
   const [poleUsed, setPoleUsed] = useState<string>("");
   const [offUsed, setOffUsed] = useState<string>("");
   const [appIsReady, setAppIsReady] = useState(false);
+  const [message, setMessage] = useState<string>("BLE Device Info:");
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -196,6 +197,7 @@ const Index = () => {
     const deviceId = MY_TARGET_ID;
     try {
       const isConnected = await manager.isDeviceConnected(deviceId);
+      console.log(`Connection status for ${deviceId}:`, isConnected);
       if (isConnected) {
         setBtConnectionState(true);
       } else {
@@ -301,13 +303,47 @@ const Index = () => {
 
       // 4. Set up Disconnection Listener
       // This ensures your UI updates if the device goes out of range
+      console.log("Connected to device:", connectedDevice);
       connectedDevice.onDisconnected((error, disconnectedDevice) => {
-        console.warn("Device disconnected!", error);
+        showToastMessage(`Device disconnected! ${error}`, "error");
 
         // 1. Reset your React State (e.g., setConnectedDevice(null))
         // 2. Stop any active monitoring/intervals
         // 3. Optionally: Trigger a re-scan or show a "Reconnect" button
       });
+
+      // temp code ========================================================
+      const devicen = await manager.connectToDevice(MY_TARGET_ID);
+      setMessage(
+        (prevMessage) =>
+          `${prevMessage}\nConnected to device ID: ${devicen.id}`,
+      );
+      // Crucial: You must discover services before you can see UUIDs
+      await devicen.discoverAllServicesAndCharacteristics();
+
+      const services = await devicen.services();
+      for (const service of services) {
+        console.log("Service UUID:", service.uuid);
+
+        setMessage(
+          (prevMessage) => `${prevMessage}\nService UUID: ${service.uuid}`,
+        );
+
+        const characteristics = await devicen.characteristicsForService(
+          service.uuid,
+        );
+        characteristics.forEach((char) => {
+          console.log(
+            `  Characteristic UUID: ${char.uuid} | Writable: ${char.isWritableWithResponse}`,
+          );
+          setMessage(
+            (prevMessage) =>
+              `${prevMessage}\nCharacteristic UUID: ${char.uuid} | Writable: ${char.isWritableWithResponse}`,
+          );
+        });
+      }
+      // end of temp code ========================================================
+
       // 3. Discover Services & Characteristics
       // You MUST do this before reading/writing anything
       await connectedDevice.discoverAllServicesAndCharacteristics();
@@ -360,9 +396,33 @@ const Index = () => {
     }
   };
 
-  const onClickPercentButtons = (btnType: string) => {
+  const onClickPercentButtons = async (btnType: string) => {
+    if (!btConnectionState) {
+      showToastMessage("Device not connected!", "error");
+      return;
+    }
     if (btConnectionState) {
       setPercentUsed(btnType);
+      try {
+        // BLE requires data to be sent as Base64 encoded strings
+        const base64Value = Buffer.from(btnType).toString("base64");
+
+        // 3. Send the command to the specific characteristic
+        // Replace SERVICE_UUID and CHARACTERISTIC_UUID with your Lokozo machine's IDs
+        // await manager.writeCharacteristicWithResponseForDevice(
+        //   connectedDeviceId,
+        //   SERVICE_UUID,
+        //   CHARACTERISTIC_UUID,
+        //   base64Value,
+        // );
+
+        showToastMessage(
+          `Successfully sent ${btnType}% to Lokozo machine`,
+          "success",
+        );
+      } catch (error) {
+        showToastMessage(`Failed to send data:, ${error}`, "error");
+      }
     } else {
       showToastMessage(
         "Please connect to LKZ_PELT Bluetooth device first.",
@@ -693,52 +753,53 @@ const Index = () => {
                 </Pressable>
               </View>
             </View>
-          </View>
-          <Modal
-            visible={modalVisible}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={onClose}
-            statusBarTranslucent={true}
-          >
-            <View style={styles.overlay}>
-              <View style={styles.modalContainer}>
-                <View style={styles.header}>
-                  <Text style={styles.title}>Available Devices</Text>
-                  <TouchableOpacity onPress={onClose}>
-                    <Text style={styles.closeBtn}>Close</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <FlatList
-                  data={scannedDevices}
-                  keyExtractor={(item) => item.id}
-                  // This is key: it allows the list to shrink/grow based on items
-                  contentContainerStyle={styles.listContent}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.deviceItem}
-                      onPress={() => connectToDevice(item)}
-                    >
-                      <View>
-                        <Text style={styles.deviceName}>
-                          {item.localName || item.name || "Unknown Device"}
-                        </Text>
-                        <Text style={styles.deviceId}>{item.id}</Text>
-                      </View>
-                      <Text style={styles.rssi}>{item.rssi} dBm</Text>
-                    </TouchableOpacity>
-                  )}
-                  ListEmptyComponent={
-                    <Text style={styles.emptyText}>
-                      Searching for devices...
-                    </Text>
-                  }
-                />
-              </View>
+            <View style={{ padding: 20 }}>
+              <Text style={styles.deviceName}>{message}</Text>
             </View>
-          </Modal>
+          </View>
         </ScrollView>
+        <Modal
+          visible={modalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={onClose}
+          statusBarTranslucent={true}
+        >
+          <View style={styles.overlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.header}>
+                <Text style={styles.title}>Available Devices</Text>
+                <TouchableOpacity onPress={onClose}>
+                  <Text style={styles.closeBtn}>Close</Text>
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+                data={scannedDevices}
+                keyExtractor={(item) => item.id}
+                // This is key: it allows the list to shrink/grow based on items
+                contentContainerStyle={styles.listContent}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.deviceItem}
+                    onPress={() => connectToDevice(item)}
+                  >
+                    <View>
+                      <Text style={styles.deviceName}>
+                        {item.localName || item.name || "Unknown Device"}
+                      </Text>
+                      <Text style={styles.deviceId}>{item.id}</Text>
+                    </View>
+                    <Text style={styles.rssi}>{item.rssi} dBm</Text>
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>Searching for devices...</Text>
+                }
+              />
+            </View>
+          </View>
+        </Modal>
       </View>
     );
   }
