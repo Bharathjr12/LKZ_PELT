@@ -1,6 +1,6 @@
 import { testID } from "@/constants/testId";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { BleManager, Device, State } from "react-native-ble-plx";
+import { encode as btoa } from "base-64";
 import { showToast } from "react-native-nitro-toast";
 
 const manager = new BleManager();
@@ -29,11 +30,10 @@ SplashScreen.preventAutoHideAsync();
 
 const Index = () => {
   const MY_TARGET_ID = "94:51:DC:58:55:6A";
-  const [scannedDevices, setScannedDevices] = useState<DeviceWithDisplayName[]>(
-    [],
-  );
+  const [scannedDevices, setScannedDevices] = useState<DeviceWithDisplayName[]>([]);
   const [btState, setBtState] = useState<State>(State.Unknown);
   const [btConnectionState, setBtConnectionState] = useState<boolean>(false);
+  const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
@@ -42,10 +42,12 @@ const Index = () => {
   const [offUsed, setOffUsed] = useState<string>("");
   const [appIsReady, setAppIsReady] = useState(false);
   const [message, setMessage] = useState<string>("BLE Device Info:");
+  const scanTimeoutRef = useRef<any>(null);
+  const checkConnTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     const initializeApp = async () => {
-      requestBluetoothPermission();
+      await requestBluetoothPermission();
 
       try {
         // --- YOUR BLE INIT LOGIC HERE ---
@@ -77,7 +79,7 @@ const Index = () => {
       setBtState(state);
       if (state === State.PoweredOn) {
         handleStartScan();
-        setTimeout(checkConnection, 13000);
+        checkConnTimeoutRef.current = setTimeout(checkConnection, 13000);
         // checkConnection();
       } else {
         stopScan(); // Safety: Stop scanning if BT is toggled off
@@ -91,10 +93,19 @@ const Index = () => {
       subscription.remove();
       // CRITICAL: Stop scanning and destroy manager on unmount
       manager.stopDeviceScan();
+      // clear pending timeouts
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
+        scanTimeoutRef.current = null;
+      }
+      if (checkConnTimeoutRef.current) {
+        clearTimeout(checkConnTimeoutRef.current);
+        checkConnTimeoutRef.current = null;
+      }
       // Only destroy if you aren't using a persistent global manager
       // manager.destroy();
     };
-  }, [manager]);
+  }, []);
 
   const hideOriginalSplashShowJSSplashScreen = async () => {
     setAppIsReady(true);
@@ -186,8 +197,8 @@ const Index = () => {
         });
       }
     });
-    setTimeout(stopScan, 10000);
-    setTimeout(checkConnection, 13000);
+    scanTimeoutRef.current = setTimeout(stopScan, 10000);
+    checkConnTimeoutRef.current = setTimeout(checkConnection, 13000);
     setIsLoading(false);
     setLoadingMessage("");
   };
@@ -297,64 +308,47 @@ const Index = () => {
       setIsLoading(true); // Show your loader
       setLoadingMessage("Connecting Bluetooth...");
 
-      // 2. Establish Connection
-      // timeout: optional milliseconds before failing
-      const connectedDevice = await device.connect({ timeout: 1000 });
+      // Use a single authoritative connect flow via manager
+      const dev = await manager.connectToDevice(device.id, { timeout: 5000 });
+      await dev.discoverAllServicesAndCharacteristics();
+      if (Platform.OS === "android") {
+        try {
+          await dev.requestMTU(512);
+        } catch (e) {
+          // Non-fatal: some devices may not support MTU request
+          console.warn("MTU request failed:", e);
+        }
+      }
 
-      // 4. Set up Disconnection Listener
-      // This ensures your UI updates if the device goes out of range
-      console.log("Connected to device:", connectedDevice);
-      connectedDevice.onDisconnected((error, disconnectedDevice) => {
-        showToastMessage(`Device disconnected! ${error}`, "error");
+      setConnectedDevice(dev);
+      setMessage((prevMessage) => `${prevMessage}\nConnected to device ID: ${dev.id}`);
 
-        // 1. Reset your React State (e.g., setConnectedDevice(null))
-        // 2. Stop any active monitoring/intervals
-        // 3. Optionally: Trigger a re-scan or show a "Reconnect" button
-      });
-
-      // temp code ========================================================
-      const devicen = await manager.connectToDevice(MY_TARGET_ID);
-      setMessage(
-        (prevMessage) =>
-          `${prevMessage}\nConnected to device ID: ${devicen.id}`,
-      );
-      // Crucial: You must discover services before you can see UUIDs
-      await devicen.discoverAllServicesAndCharacteristics();
-
-      const services = await devicen.services();
+      // Log services/characteristics once
+      const services = await dev.services();
       for (const service of services) {
         console.log("Service UUID:", service.uuid);
-
-        setMessage(
-          (prevMessage) => `${prevMessage}\nService UUID: ${service.uuid}`,
-        );
-
-        const characteristics = await devicen.characteristicsForService(
-          service.uuid,
-        );
+        setMessage((prevMessage) => `${prevMessage}\nService UUID: ${service.uuid}`);
+        const characteristics = await dev.characteristicsForService(service.uuid);
         characteristics.forEach((char) => {
           console.log(
             `  Characteristic UUID: ${char.uuid} | Writable: ${char.isWritableWithResponse}`,
           );
-          setMessage(
-            (prevMessage) =>
-              `${prevMessage}\nCharacteristic UUID: ${char.uuid} | Writable: ${char.isWritableWithResponse}`,
+          setMessage((prevMessage) =>
+            `${prevMessage}\nCharacteristic UUID: ${char.uuid} | Writable: ${char.isWritableWithResponse}`,
           );
         });
       }
-      // end of temp code ========================================================
 
-      // 3. Discover Services & Characteristics
-      // You MUST do this before reading/writing anything
-      await connectedDevice.discoverAllServicesAndCharacteristics();
-      if (Platform.OS === "android") {
-        await connectedDevice.requestMTU(512);
-      }
-      // setIsLoading(false); // Hide your loader
-      // setLoadingMessage("");
+      // Set up Disconnection Listener
+      dev.onDisconnected((error, disconnectedDevice) => {
+        showToastMessage("Device disconnected", "error");
+        setConnectedDevice(null);
+        setBtConnectionState(false);
+      });
+
       setTimeout(() => {
         checkConnection();
-        setIsLoading(false); // Hide your loader
+        setIsLoading(false);
         setLoadingMessage("");
         onClose();
       }, 1500);
@@ -379,7 +373,8 @@ const Index = () => {
       showToastMessage("Device Disconnected successfully", "success");
 
       // Reset your local React state here
-      // setConnectedDevice(null);
+      setConnectedDevice(null);
+      setBtConnectionState(false);
     } catch (error) {
       // console.error("Disconnection failed:", error);
       showToastMessage("Failed to disconnect device", "error");
@@ -405,7 +400,7 @@ const Index = () => {
       setPercentUsed(btnType);
       try {
         // BLE requires data to be sent as Base64 encoded strings
-        const base64Value = Buffer.from(btnType).toString("base64");
+        const base64Value = btoa(btnType);
 
         // 3. Send the command to the specific characteristic
         // Replace SERVICE_UUID and CHARACTERISTIC_UUID with your Lokozo machine's IDs
@@ -753,9 +748,6 @@ const Index = () => {
                 </Pressable>
               </View>
             </View>
-            <View style={{ padding: 20 }}>
-              <Text style={styles.deviceName}>{message}</Text>
-            </View>
           </View>
         </ScrollView>
         <Modal
@@ -882,7 +874,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   circleButton: {
-    borderRadius: "50%",
+    borderRadius: 999,
     paddingVertical: 28,
   },
   circleButtonMarginVertical: {
