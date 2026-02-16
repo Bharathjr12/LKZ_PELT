@@ -1,6 +1,7 @@
 import { testID } from "@/constants/testId";
+import { encode as btoa } from "base-64";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -17,7 +18,6 @@ import {
   View,
 } from "react-native";
 import { BleManager, Device, State } from "react-native-ble-plx";
-import { encode as btoa } from "base-64";
 import { showToast } from "react-native-nitro-toast";
 
 const manager = new BleManager();
@@ -29,8 +29,9 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 SplashScreen.preventAutoHideAsync();
 
 const Index = () => {
-  const MY_TARGET_ID = "94:51:DC:58:55:6A";
-  const [scannedDevices, setScannedDevices] = useState<DeviceWithDisplayName[]>([]);
+  const [scannedDevices, setScannedDevices] = useState<DeviceWithDisplayName[]>(
+    [],
+  );
   const [btState, setBtState] = useState<State>(State.Unknown);
   const [btConnectionState, setBtConnectionState] = useState<boolean>(false);
   const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
@@ -41,7 +42,6 @@ const Index = () => {
   const [poleUsed, setPoleUsed] = useState<string>("");
   const [offUsed, setOffUsed] = useState<string>("");
   const [appIsReady, setAppIsReady] = useState(false);
-  const [message, setMessage] = useState<string>("BLE Device Info:");
   const scanTimeoutRef = useRef<any>(null);
   const checkConnTimeoutRef = useRef<any>(null);
 
@@ -203,25 +203,50 @@ const Index = () => {
     setLoadingMessage("");
   };
 
-  const checkConnection = async () => {
+  // ...existing code...
+  const checkConnection = async (): Promise<Device | null> => {
     setIsLoading(true);
-    const deviceId = MY_TARGET_ID;
     try {
-      const isConnected = await manager.isDeviceConnected(deviceId);
-      console.log(`Connection status for ${deviceId}:`, isConnected);
-      if (isConnected) {
-        setBtConnectionState(true);
-      } else {
-        setBtConnectionState(false);
+      // 1) If we already have a device in state, verify and return its details
+      if (connectedDevice) {
+        const isConnected = await manager.isDeviceConnected(connectedDevice.id);
+        if (isConnected) {
+          setBtConnectionState(true);
+          setIsLoading(false);
+          setLoadingMessage("");
+          return connectedDevice;
+        }
+        // clear stale state if not connected
+        setConnectedDevice(null);
       }
+
+      // 2) Inspect scannedDevices to find any currently connected device
+      for (const dev of scannedDevices) {
+        try {
+          const isConnected = await manager.isDeviceConnected(dev.id);
+          if (isConnected) {
+            // use the scanned device object as the connected device detail
+            setConnectedDevice(dev);
+            setBtConnectionState(true);
+            setIsLoading(false);
+            setLoadingMessage("");
+            return dev;
+          }
+        } catch {
+          // ignore per-device errors and continue
+        }
+      }
+
+      // 3) none found
+      setBtConnectionState(false);
       setIsLoading(false);
       setLoadingMessage("");
-      return isConnected;
+      return null;
     } catch (error) {
       showToastMessage("Error checking connection status", "error");
       setIsLoading(false);
       setLoadingMessage("");
-      return false;
+      return null;
     }
   };
 
@@ -293,14 +318,6 @@ const Index = () => {
   };
 
   const connectToDevice = async (device: Device) => {
-    if (device.id !== MY_TARGET_ID) {
-      showToastMessage(
-        "Access Denied: This app is restricted to LKZ_PELT hardware.",
-        "error",
-      );
-      return;
-    }
-
     try {
       // 1. Stop scanning before connecting (Crucial for stability)
       manager.stopDeviceScan();
@@ -321,30 +338,6 @@ const Index = () => {
       }
 
       setConnectedDevice(dev);
-      setMessage((prevMessage) => `${prevMessage}\nConnected to device ID: ${dev.id}`);
-
-      // Log services/characteristics once
-      const services = await dev.services();
-      for (const service of services) {
-        console.log("Service UUID:", service.uuid);
-        setMessage((prevMessage) => `${prevMessage}\nService UUID: ${service.uuid}`);
-        const characteristics = await dev.characteristicsForService(service.uuid);
-        characteristics.forEach((char) => {
-          console.log(
-            `  Characteristic UUID: ${char.uuid} | Writable: ${char.isWritableWithResponse}`,
-          );
-          setMessage((prevMessage) =>
-            `${prevMessage}\nCharacteristic UUID: ${char.uuid} | Writable: ${char.isWritableWithResponse}`,
-          );
-        });
-      }
-
-      // Set up Disconnection Listener
-      dev.onDisconnected((error, disconnectedDevice) => {
-        showToastMessage("Device disconnected", "error");
-        setConnectedDevice(null);
-        setBtConnectionState(false);
-      });
 
       setTimeout(() => {
         checkConnection();
@@ -366,10 +359,13 @@ const Index = () => {
   };
 
   const disconnectDevice = async () => {
-    const deviceId = MY_TARGET_ID;
+    if (!connectedDevice) {
+      showToastMessage("No device currently connected", "warning");
+      return;
+    }
     try {
       // This tells the Android Bluetooth stack to close the GATT server connection
-      await manager.cancelDeviceConnection(deviceId);
+      await manager.cancelDeviceConnection(connectedDevice?.id);
       showToastMessage("Device Disconnected successfully", "success");
 
       // Reset your local React state here
