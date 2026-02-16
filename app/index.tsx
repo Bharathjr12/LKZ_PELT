@@ -79,7 +79,7 @@ const Index = () => {
       setBtState(state);
       if (state === State.PoweredOn) {
         handleStartScan();
-        checkConnTimeoutRef.current = setTimeout(checkConnection, 13000);
+        checkConnTimeoutRef.current = setTimeout(checkConnection, 3000);
         // checkConnection();
       } else {
         stopScan(); // Safety: Stop scanning if BT is toggled off
@@ -197,8 +197,8 @@ const Index = () => {
         });
       }
     });
-    scanTimeoutRef.current = setTimeout(stopScan, 10000);
-    checkConnTimeoutRef.current = setTimeout(checkConnection, 13000);
+    scanTimeoutRef.current = setTimeout(stopScan, 1000);
+    checkConnTimeoutRef.current = setTimeout(checkConnection, 3000);
     setIsLoading(false);
     setLoadingMessage("");
   };
@@ -317,44 +317,50 @@ const Index = () => {
     }
   };
 
-  const connectToDevice = async (device: Device) => {
+  const connectToBTDevice = async (device: Device) => {
     try {
       // 1. Stop scanning before connecting (Crucial for stability)
       manager.stopDeviceScan();
 
-      setIsLoading(true); // Show your loader
-      setLoadingMessage("Connecting Bluetooth...");
+      setIsLoading(true);
+      setLoadingMessage("Connecting to device...");
 
-      // Use a single authoritative connect flow via manager
-      const dev = await manager.connectToDevice(device.id, { timeout: 5000 });
+      // 2. Connect to device with timeout
+      const dev = await manager.connectToDevice(device.id, { timeout: 10000 });
+
+      // 3. Discover services and characteristics
       await dev.discoverAllServicesAndCharacteristics();
+
+      // 4. Request MTU on Android
       if (Platform.OS === "android") {
         try {
           await dev.requestMTU(512);
         } catch (e) {
-          // Non-fatal: some devices may not support MTU request
           console.warn("MTU request failed:", e);
         }
       }
 
+      // 5. Update state
       setConnectedDevice(dev);
+      setBtConnectionState(true);
+      setIsLoading(false);
+      setLoadingMessage("");
 
-      setTimeout(() => {
-        checkConnection();
-        setIsLoading(false);
-        setLoadingMessage("");
-        onClose();
-      }, 1500);
-    } catch (error) {
+      // 6. Close modal and show success
+      onClose();
+      showToastMessage("Device connected successfully", "success");
+    } catch (error: any) {
       console.error("Connection Error:", error);
-      setIsLoading(false); // Hide your loader
+
+      // Reset all state
+      setConnectedDevice(null);
+      setBtConnectionState(false);
+      setIsLoading(false);
       setLoadingMessage("");
-      checkConnection();
-      // Handle specific errors like 'Device is already connected'
-    } finally {
-      setIsLoading(false); // Hide your loader
-      setLoadingMessage("");
-      checkConnection();
+
+      // Show error message
+      const errorMsg = error?.message || String(error);
+      showToastMessage(`Connection failed: ${errorMsg}`, "error");
     }
   };
 
@@ -770,7 +776,7 @@ const Index = () => {
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.deviceItem}
-                    onPress={() => connectToDevice(item)}
+                    onPress={() => connectToBTDevice(item)}
                   >
                     <View>
                       <Text style={styles.deviceName}>
