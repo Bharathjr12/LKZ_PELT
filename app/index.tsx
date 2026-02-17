@@ -34,7 +34,8 @@ type DeviceWithDisplayName = Device & { displayName: string };
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-SplashScreen.preventAutoHideAsync();
+// Prevent auto hide; swallow errors to avoid unhandled rejection at module load
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const Index = () => {
   const [scannedDevices, setScannedDevices] = useState<DeviceWithDisplayName[]>(
@@ -52,29 +53,30 @@ const Index = () => {
   const [appIsReady, setAppIsReady] = useState(false);
   const scanTimeoutRef = useRef<any>(null);
   const checkConnTimeoutRef = useRef<any>(null);
+  const isMountedRef = useRef<boolean>(true);
 
   const checkConnection = async (): Promise<Device | null> => {
-    setIsLoading(true);
+    if (isMountedRef.current) setIsLoading(true);
     try {
       if (connectedDevice) {
         const isConnected = await manager.isDeviceConnected(connectedDevice.id);
         if (isConnected) {
-          setBtConnectionState(true);
-          setIsLoading(false);
-          setLoadingMessage("");
+          if (isMountedRef.current) setBtConnectionState(true);
+          if (isMountedRef.current) setIsLoading(false);
+          if (isMountedRef.current) setLoadingMessage("");
           return connectedDevice;
         }
-        setConnectedDevice(null);
+        if (isMountedRef.current) setConnectedDevice(null);
       }
 
       for (const dev of scannedDevices) {
         try {
           const isConnected = await manager.isDeviceConnected(dev.id);
           if (isConnected) {
-            setConnectedDevice(dev);
-            setBtConnectionState(true);
-            setIsLoading(false);
-            setLoadingMessage("");
+            if (isMountedRef.current) setConnectedDevice(dev);
+            if (isMountedRef.current) setBtConnectionState(true);
+            if (isMountedRef.current) setIsLoading(false);
+            if (isMountedRef.current) setLoadingMessage("");
             return dev;
           }
         } catch {
@@ -90,25 +92,24 @@ const Index = () => {
           const connected = await manager.connectedDevices(KNOWN_SERVICE_UUIDS);
           if (connected && connected.length > 0) {
             const dev = connected[0];
-            setConnectedDevice(dev);
-            setBtConnectionState(true);
-            setIsLoading(false);
-            setLoadingMessage("");
+            if (isMountedRef.current) setConnectedDevice(dev);
+            if (isMountedRef.current) setBtConnectionState(true);
+            if (isMountedRef.current) setIsLoading(false);
+            if (isMountedRef.current) setLoadingMessage("");
             return dev;
           }
         } catch (e) {
           // ignore errors from connectedDevices
         }
       }
-
-      setBtConnectionState(false);
-      setIsLoading(false);
-      setLoadingMessage("");
+      if (isMountedRef.current) setBtConnectionState(false);
+      if (isMountedRef.current) setIsLoading(false);
+      if (isMountedRef.current) setLoadingMessage("");
       return null;
     } catch (error) {
       showToastMessage("Error checking connection status", "error");
-      setIsLoading(false);
-      setLoadingMessage("");
+      if (isMountedRef.current) setIsLoading(false);
+      if (isMountedRef.current) setLoadingMessage("");
       return null;
     }
   };
@@ -146,6 +147,10 @@ const Index = () => {
     };
 
     initializeApp();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -159,9 +164,9 @@ const Index = () => {
         // checkConnection();
       } else {
         stopScan(); // Safety: Stop scanning if BT is toggled off
-        setScannedDevices([]);
-        setIsLoading(false);
-        setLoadingMessage("");
+        if (isMountedRef.current) setScannedDevices([]);
+        if (isMountedRef.current) setIsLoading(false);
+        if (isMountedRef.current) setLoadingMessage("");
       }
     }, true);
 
@@ -184,7 +189,7 @@ const Index = () => {
   }, []);
 
   const hideOriginalSplashShowJSSplashScreen = async () => {
-    setAppIsReady(true);
+    if (isMountedRef.current) setAppIsReady(true);
     return true;
   };
 
@@ -248,9 +253,9 @@ const Index = () => {
   };
 
   const handleStartScan = async () => {
-    setScannedDevices([]);
-    setIsLoading(true);
-    setLoadingMessage("Initializing Bluetooth...");
+    if (isMountedRef.current) setScannedDevices([]);
+    if (isMountedRef.current) setIsLoading(true);
+    if (isMountedRef.current) setLoadingMessage("Initializing Bluetooth...");
 
     manager.startDeviceScan(null, null, (error, device) => {
       if (error) {
@@ -261,7 +266,7 @@ const Index = () => {
       const displayName =
         device?.localName || device?.name || `Unnamed (${device?.id})`;
 
-      if (device) {
+      if (device && isMountedRef.current) {
         setScannedDevices((prev) => {
           if (!prev.some((d) => d.id === device.id)) {
             return [
@@ -275,8 +280,8 @@ const Index = () => {
     });
     scanTimeoutRef.current = setTimeout(stopScan, 1000);
     checkConnTimeoutRef.current = setTimeout(checkConnection, 3000);
-    setIsLoading(false);
-    setLoadingMessage("");
+    if (isMountedRef.current) setIsLoading(false);
+    if (isMountedRef.current) setLoadingMessage("");
   };
 
   const stopScan = () => {
@@ -330,7 +335,6 @@ const Index = () => {
   //     }
   //   } catch (error) {
   //     showToastMessage("Error toggling Bluetooth radio", "error");
-  //   }
   // };
 
   const connectToBtDevice = async () => {
@@ -370,10 +374,10 @@ const Index = () => {
       }
 
       // 5. Update state
-      setConnectedDevice(dev);
-      setBtConnectionState(true);
-      setIsLoading(false);
-      setLoadingMessage("");
+      if (isMountedRef.current) setConnectedDevice(dev);
+      if (isMountedRef.current) setBtConnectionState(true);
+      if (isMountedRef.current) setIsLoading(false);
+      if (isMountedRef.current) setLoadingMessage("");
 
       // 6. Close modal and show success
       onClose();
@@ -382,10 +386,10 @@ const Index = () => {
       console.error("Connection Error:", error);
 
       // Reset all state
-      setConnectedDevice(null);
-      setBtConnectionState(false);
-      setIsLoading(false);
-      setLoadingMessage("");
+      if (isMountedRef.current) setConnectedDevice(null);
+      if (isMountedRef.current) setBtConnectionState(false);
+      if (isMountedRef.current) setIsLoading(false);
+      if (isMountedRef.current) setLoadingMessage("");
 
       // Show error message
       const errorMsg = error?.message || String(error);
@@ -404,8 +408,8 @@ const Index = () => {
       showToastMessage("Device Disconnected successfully", "success");
 
       // Reset your local React state here
-      setConnectedDevice(null);
-      setBtConnectionState(false);
+      if (isMountedRef.current) setConnectedDevice(null);
+      if (isMountedRef.current) setBtConnectionState(false);
     } catch (error) {
       // console.error("Disconnection failed:", error);
       showToastMessage("Failed to disconnect device", "error");
@@ -413,29 +417,57 @@ const Index = () => {
   };
 
   const onClickOffButtons = async (btnType: string) => {
-    setOffUsed(btnType);
-    disconnectDevice();
-    if (connectedDevice) {
-      try {
-        const base64Value = btoa("L");
-
-        // 3. Send the command to the specific characteristic
-        // Replace SERVICE_UUID and CHARACTERISTIC_UUID with your Lokozo machine's IDs
-        await manager.writeCharacteristicWithResponseForDevice(
-          connectedDevice.id,
-          KNOWN_SERVICE_UUIDS[0], // or your specific service UUID
-          KNOWN_CHARACTERISTIC_UUIDS[0], // or your specific characteristic UUID
-          base64Value,
-        );
-
-        showToastMessage(
-          `Lokozo machine Successfully disconnected and turned off`,
-          "success",
-        );
-      } catch (error) {
-        showToastMessage(`Failed to turn off Lokozo machine`, "error");
-      }
+    // Guard and send OFF command before disconnecting
+    if (!btConnectionState) {
+      showToastMessage("Device not connected!", "error");
+      return;
     }
+
+    if (!connectedDevice || !connectedDevice.id) {
+      showToastMessage(
+        "Please connect to LKZ_PELT Bluetooth device first.",
+        "warning",
+      );
+      return;
+    }
+
+    const serviceUUID = KNOWN_SERVICE_UUIDS[0];
+    const charUUID = KNOWN_CHARACTERISTIC_UUIDS[0];
+    if (!serviceUUID || !charUUID) {
+      showToastMessage(
+        "Service or Characteristic UUID is not configured.",
+        "error",
+      );
+      return;
+    }
+
+    if (
+      typeof manager.writeCharacteristicWithResponseForDevice !== "function"
+    ) {
+      showToastMessage("Bluetooth manager not available.", "error");
+      return;
+    }
+
+    if (isMountedRef.current) setOffUsed(btnType);
+    try {
+      const base64Value = btoa("L");
+
+      await manager.writeCharacteristicWithResponseForDevice(
+        connectedDevice.id,
+        serviceUUID,
+        charUUID,
+        base64Value,
+      );
+
+      showToastMessage(`Lokozo machine Successfully turned off`, "success");
+
+      // now disconnect cleanly
+      await disconnectDevice();
+    } catch (error: any) {
+      const msg = error?.message || String(error);
+      showToastMessage(`Failed to turn off Lokozo machine: ${msg}`, "error");
+    }
+
     if (Platform.OS === "android") {
       // turnOffBluetooth();
       // toggleBluetooth(false);
@@ -443,81 +475,124 @@ const Index = () => {
   };
 
   const onClickPercentButtons = async (btnType: string) => {
+    // Defensive guards to avoid native crashes
     if (!btConnectionState) {
       showToastMessage("Device not connected!", "error");
       return;
     }
-    if (connectedDevice) {
-      setPercentUsed(btnType);
-      try {
-        // BLE requires data to be sent as Base64 encoded strings
-        let valueToSend =
-          btnType === "25%"
-            ? "K"
-            : btnType === "50%"
-              ? "Z"
-              : btnType === "75%"
-                ? "P"
-                : "E"; // This should be the actual command/data you want to send
-        const base64Value = btoa(valueToSend);
 
-        // 3. Send the command to the specific characteristic
-        // Replace SERVICE_UUID and CHARACTERISTIC_UUID with your Lokozo machine's IDs
-        await manager.writeCharacteristicWithResponseForDevice(
-          connectedDevice.id,
-          KNOWN_SERVICE_UUIDS[0], // or your specific service UUID
-          KNOWN_CHARACTERISTIC_UUIDS[0], // or your specific characteristic UUID
-          base64Value,
-        );
-
-        showToastMessage(
-          `Successfully sent ${btnType}% to Lokozo machine`,
-          "success",
-        );
-      } catch (error) {
-        showToastMessage(`Failed to send data:, ${error}`, "error");
-      }
-    } else {
+    if (!connectedDevice || !connectedDevice.id) {
       showToastMessage(
         "Please connect to LKZ_PELT Bluetooth device first.",
         "warning",
       );
+      return;
+    }
+
+    const serviceUUID = KNOWN_SERVICE_UUIDS[0];
+    const charUUID = KNOWN_CHARACTERISTIC_UUIDS[0];
+    if (!serviceUUID || !charUUID) {
+      showToastMessage(
+        "Service or Characteristic UUID is not configured.",
+        "error",
+      );
+      return;
+    }
+
+    if (
+      typeof manager.writeCharacteristicWithResponseForDevice !== "function"
+    ) {
+      showToastMessage("Bluetooth manager not available.", "error");
+      return;
+    }
+
+    if (isMountedRef.current) setPercentUsed(btnType);
+    try {
+      // BLE requires data to be sent as Base64 encoded strings
+      let valueToSend =
+        btnType === "25%"
+          ? "K"
+          : btnType === "50%"
+            ? "Z"
+            : btnType === "75%"
+              ? "P"
+              : "E";
+
+      const base64Value = btoa(valueToSend);
+
+      if (typeof base64Value !== "string") {
+        throw new Error("Failed to encode data to Base64");
+      }
+
+      // Send the command to the specific characteristic
+      await manager.writeCharacteristicWithResponseForDevice(
+        connectedDevice.id,
+        serviceUUID,
+        charUUID,
+        base64Value,
+      );
+
+      showToastMessage(
+        `Successfully sent ${btnType} to Lokozo machine`,
+        "success",
+      );
+    } catch (error: any) {
+      const msg = error?.message || String(error);
+      showToastMessage(`Failed to send data: ${msg}`, "error");
     }
   };
 
   const onClickPoleButtons = async (btnType: string) => {
+    // Defensive guards
     if (!btConnectionState) {
       showToastMessage("Device not connected!", "error");
       return;
     }
-    if (connectedDevice) {
-      setPoleUsed(btnType);
-      try {
-        // BLE requires data to be sent as Base64 encoded strings
-        let valueToSend = btnType === "POLE UP" ? "L" : "T"; // This should be the actual command/data you want to send
-        const base64Value = btoa(valueToSend);
 
-        // 3. Send the command to the specific characteristic
-        // Replace SERVICE_UUID and CHARACTERISTIC_UUID with your Lokozo machine's IDs
-        await manager.writeCharacteristicWithResponseForDevice(
-          connectedDevice.id,
-          KNOWN_SERVICE_UUIDS[0], // or your specific service UUID
-          KNOWN_CHARACTERISTIC_UUIDS[0], // or your specific characteristic UUID
-          base64Value,
-        );
-
-        showToastMessage(
-          `Successfully sent ${btnType}% to Lokozo machine`,
-          "success",
-        );
-      } catch (error) {
-        showToastMessage(`Failed to send data:, ${error}`, "error");
-      }
-    } else {
+    if (!connectedDevice || !connectedDevice.id) {
       showToastMessage(
         "Please connect to LKZ_PELT Bluetooth device first.",
         "warning",
       );
+      return;
+    }
+
+    const serviceUUID = KNOWN_SERVICE_UUIDS[0];
+    const charUUID = KNOWN_CHARACTERISTIC_UUIDS[0];
+    if (!serviceUUID || !charUUID) {
+      showToastMessage(
+        "Service or Characteristic UUID is not configured.",
+        "error",
+      );
+      return;
+    }
+
+    if (
+      typeof manager.writeCharacteristicWithResponseForDevice !== "function"
+    ) {
+      showToastMessage("Bluetooth manager not available.", "error");
+      return;
+    }
+
+    if (isMountedRef.current) setPoleUsed(btnType);
+    try {
+      let valueToSend = btnType === "POLE UP" ? "L" : "T";
+      const base64Value = btoa(valueToSend);
+
+      await manager.writeCharacteristicWithResponseForDevice(
+        connectedDevice.id,
+        serviceUUID,
+        charUUID,
+        base64Value,
+      );
+
+      showToastMessage(
+        `Successfully sent ${btnType} to Lokozo machine`,
+        "success",
+      );
+    } catch (error: any) {
+      const msg = error?.message || String(error);
+      showToastMessage(`Failed to send data: ${msg}`, "error");
     }
   };
 
