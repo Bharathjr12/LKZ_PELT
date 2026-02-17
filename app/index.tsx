@@ -22,6 +22,14 @@ import { showToast } from "react-native-nitro-toast";
 
 const manager = new BleManager();
 
+// If you know your device's service UUID(s), add them here so we can
+// detect devices already connected to the system even when they don't
+// appear in the current scan results.
+const KNOWN_SERVICE_UUIDS: string[] = ["12345678-1234-1234-1234-1234567890ab"];
+const KNOWN_CHARACTERISTIC_UUIDS: string[] = [
+  "abcd1234-5678-1234-5678-abcdef123456",
+];
+
 type DeviceWithDisplayName = Device & { displayName: string };
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -45,6 +53,66 @@ const Index = () => {
   const scanTimeoutRef = useRef<any>(null);
   const checkConnTimeoutRef = useRef<any>(null);
 
+  const checkConnection = async (): Promise<Device | null> => {
+    setIsLoading(true);
+    try {
+      if (connectedDevice) {
+        const isConnected = await manager.isDeviceConnected(connectedDevice.id);
+        if (isConnected) {
+          setBtConnectionState(true);
+          setIsLoading(false);
+          setLoadingMessage("");
+          return connectedDevice;
+        }
+        setConnectedDevice(null);
+      }
+
+      for (const dev of scannedDevices) {
+        try {
+          const isConnected = await manager.isDeviceConnected(dev.id);
+          if (isConnected) {
+            setConnectedDevice(dev);
+            setBtConnectionState(true);
+            setIsLoading(false);
+            setLoadingMessage("");
+            return dev;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // If the connected device wasn't found in the scan results, try
+      // querying the OS for devices already connected that advertise
+      // known service UUIDs (if configured).
+      if (KNOWN_SERVICE_UUIDS.length > 0) {
+        try {
+          const connected = await manager.connectedDevices(KNOWN_SERVICE_UUIDS);
+          if (connected && connected.length > 0) {
+            const dev = connected[0];
+            setConnectedDevice(dev);
+            setBtConnectionState(true);
+            setIsLoading(false);
+            setLoadingMessage("");
+            return dev;
+          }
+        } catch (e) {
+          // ignore errors from connectedDevices
+        }
+      }
+
+      setBtConnectionState(false);
+      setIsLoading(false);
+      setLoadingMessage("");
+      return null;
+    } catch (error) {
+      showToastMessage("Error checking connection status", "error");
+      setIsLoading(false);
+      setLoadingMessage("");
+      return null;
+    }
+  };
+
   useEffect(() => {
     const initializeApp = async () => {
       await requestBluetoothPermission();
@@ -52,6 +120,14 @@ const Index = () => {
       try {
         // --- YOUR BLE INIT LOGIC HERE ---
         // Pre-load fonts, make API calls, or check BLE permissions
+
+        // If Bluetooth is already powered on, start scanning and verify connection
+        const currentState = await manager.state();
+        if (currentState === State.PoweredOn) {
+          handleStartScan();
+          // run an immediate connection check
+          await checkConnection();
+        }
 
         // Increase Splash Screen time (e.g., 3 seconds)
         SplashScreen.hideAsync();
@@ -203,113 +279,66 @@ const Index = () => {
     setLoadingMessage("");
   };
 
-  // ...existing code...
-  const checkConnection = async (): Promise<Device | null> => {
-    setIsLoading(true);
-    try {
-      // 1) If we already have a device in state, verify and return its details
-      if (connectedDevice) {
-        const isConnected = await manager.isDeviceConnected(connectedDevice.id);
-        if (isConnected) {
-          setBtConnectionState(true);
-          setIsLoading(false);
-          setLoadingMessage("");
-          return connectedDevice;
-        }
-        // clear stale state if not connected
-        setConnectedDevice(null);
-      }
-
-      // 2) Inspect scannedDevices to find any currently connected device
-      for (const dev of scannedDevices) {
-        try {
-          const isConnected = await manager.isDeviceConnected(dev.id);
-          if (isConnected) {
-            // use the scanned device object as the connected device detail
-            setConnectedDevice(dev);
-            setBtConnectionState(true);
-            setIsLoading(false);
-            setLoadingMessage("");
-            return dev;
-          }
-        } catch {
-          // ignore per-device errors and continue
-        }
-      }
-
-      // 3) none found
-      setBtConnectionState(false);
-      setIsLoading(false);
-      setLoadingMessage("");
-      return null;
-    } catch (error) {
-      showToastMessage("Error checking connection status", "error");
-      setIsLoading(false);
-      setLoadingMessage("");
-      return null;
-    }
-  };
-
   const stopScan = () => {
     manager.stopDeviceScan();
   };
 
-  const toggleBluetooth = async (turnOn: boolean) => {
-    if (Platform.OS === "android") {
-      // 1. Request the specific permission required to toggle the radio
-      const hasPermission = await PermissionsAndroid.check(
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-      );
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-      );
+  // const toggleBluetooth = async (turnOn: boolean) => {
+  //   if (Platform.OS === "android") {
+  //     // 1. Request the specific permission required to toggle the radio
+  //     const hasPermission = await PermissionsAndroid.check(
+  //       PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+  //     );
+  //     const granted = await PermissionsAndroid.request(
+  //       PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+  //     );
 
-      if (!hasPermission) {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          {
-            showToastMessage(
-              "Bluetooth Connect permission denied. Cannot enable.",
-              "error",
-            );
-            return;
-          }
-        }
-      }
-    }
+  //     if (!hasPermission) {
+  //       const granted = await PermissionsAndroid.request(
+  //         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+  //       );
+  //       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+  //         {
+  //           showToastMessage(
+  //             "Bluetooth Connect permission denied. Cannot enable.",
+  //             "error",
+  //           );
+  //           return;
+  //         }
+  //       }
+  //     }
+  //   }
 
-    try {
-      if (Platform.OS === "android") {
-        if (turnOn) {
-          // Powers on the radio. Note: Requires BLUETOOTH_CONNECT permission
-          await manager.enable();
-          handleStartScan();
-          showToastMessage("Bluetooth turned on", "success");
-        } else {
-          // Powers off the radio.
-          await manager.disable();
-          setTimeout(checkConnection, 1000);
-          showToastMessage("Bluetooth turned off", "success");
-        }
-      } else {
-        showToastMessage(
-          "iOS does not allow programmatic radio toggling.",
-          "error",
-        );
-      }
-    } catch (error) {
-      showToastMessage("Error toggling Bluetooth radio", "error");
-    }
-  };
+  //   try {
+  //     if (Platform.OS === "android") {
+  //       if (turnOn) {
+  //         // Powers on the radio. Note: Requires BLUETOOTH_CONNECT permission
+  //         await manager.enable();
+  //         handleStartScan();
+  //         showToastMessage("Bluetooth turned on", "success");
+  //       } else {
+  //         // Powers off the radio.
+  //         await manager.disable();
+  //         setTimeout(checkConnection, 1000);
+  //         showToastMessage("Bluetooth turned off", "success");
+  //       }
+  //     } else {
+  //       showToastMessage(
+  //         "iOS does not allow programmatic radio toggling.",
+  //         "error",
+  //       );
+  //     }
+  //   } catch (error) {
+  //     showToastMessage("Error toggling Bluetooth radio", "error");
+  //   }
+  // };
 
   const connectToBtDevice = async () => {
     if (btState === State.PoweredOn) {
       handleStartScan();
       setModalVisible(true);
     } else {
-      toggleBluetooth(true);
+      // toggleBluetooth(true);
       showToastMessage(
         "Please turn on Bluetooth to connect to devices.",
         "warning",
@@ -383,13 +412,33 @@ const Index = () => {
     }
   };
 
-  const onClickOffButtons = (btnType: string) => {
+  const onClickOffButtons = async (btnType: string) => {
     setOffUsed(btnType);
     disconnectDevice();
+    if (connectedDevice) {
+      try {
+        const base64Value = btoa("L");
 
+        // 3. Send the command to the specific characteristic
+        // Replace SERVICE_UUID and CHARACTERISTIC_UUID with your Lokozo machine's IDs
+        await manager.writeCharacteristicWithResponseForDevice(
+          connectedDevice.id,
+          KNOWN_SERVICE_UUIDS[0], // or your specific service UUID
+          KNOWN_CHARACTERISTIC_UUIDS[0], // or your specific characteristic UUID
+          base64Value,
+        );
+
+        showToastMessage(
+          `Lokozo machine Successfully disconnected and turned off`,
+          "success",
+        );
+      } catch (error) {
+        showToastMessage(`Failed to turn off Lokozo machine`, "error");
+      }
+    }
     if (Platform.OS === "android") {
       // turnOffBluetooth();
-      toggleBluetooth(false);
+      // toggleBluetooth(false);
     }
   };
 
@@ -398,20 +447,28 @@ const Index = () => {
       showToastMessage("Device not connected!", "error");
       return;
     }
-    if (btConnectionState) {
+    if (connectedDevice) {
       setPercentUsed(btnType);
       try {
         // BLE requires data to be sent as Base64 encoded strings
-        const base64Value = btoa(btnType);
+        let valueToSend =
+          btnType === "25%"
+            ? "K"
+            : btnType === "50%"
+              ? "Z"
+              : btnType === "75%"
+                ? "P"
+                : "E"; // This should be the actual command/data you want to send
+        const base64Value = btoa(valueToSend);
 
         // 3. Send the command to the specific characteristic
         // Replace SERVICE_UUID and CHARACTERISTIC_UUID with your Lokozo machine's IDs
-        // await manager.writeCharacteristicWithResponseForDevice(
-        //   connectedDeviceId,
-        //   SERVICE_UUID,
-        //   CHARACTERISTIC_UUID,
-        //   base64Value,
-        // );
+        await manager.writeCharacteristicWithResponseForDevice(
+          connectedDevice.id,
+          KNOWN_SERVICE_UUIDS[0], // or your specific service UUID
+          KNOWN_CHARACTERISTIC_UUIDS[0], // or your specific characteristic UUID
+          base64Value,
+        );
 
         showToastMessage(
           `Successfully sent ${btnType}% to Lokozo machine`,
@@ -428,9 +485,34 @@ const Index = () => {
     }
   };
 
-  const onClickPoleButtons = (btnType: string) => {
-    if (btConnectionState) {
+  const onClickPoleButtons = async (btnType: string) => {
+    if (!btConnectionState) {
+      showToastMessage("Device not connected!", "error");
+      return;
+    }
+    if (connectedDevice) {
       setPoleUsed(btnType);
+      try {
+        // BLE requires data to be sent as Base64 encoded strings
+        let valueToSend = btnType === "POLE UP" ? "L" : "T"; // This should be the actual command/data you want to send
+        const base64Value = btoa(valueToSend);
+
+        // 3. Send the command to the specific characteristic
+        // Replace SERVICE_UUID and CHARACTERISTIC_UUID with your Lokozo machine's IDs
+        await manager.writeCharacteristicWithResponseForDevice(
+          connectedDevice.id,
+          KNOWN_SERVICE_UUIDS[0], // or your specific service UUID
+          KNOWN_CHARACTERISTIC_UUIDS[0], // or your specific characteristic UUID
+          base64Value,
+        );
+
+        showToastMessage(
+          `Successfully sent ${btnType}% to Lokozo machine`,
+          "success",
+        );
+      } catch (error) {
+        showToastMessage(`Failed to send data:, ${error}`, "error");
+      }
     } else {
       showToastMessage(
         "Please connect to LKZ_PELT Bluetooth device first.",
