@@ -25,9 +25,9 @@ const manager = new BleManager();
 // If you know your device's service UUID(s), add them here so we can
 // detect devices already connected to the system even when they don't
 // appear in the current scan results.
-const KNOWN_SERVICE_UUIDS: string[] = ["12345678-1234-1234-1234-1234567890ab"];
+const KNOWN_SERVICE_UUIDS: string[] = ["21111998-0717-1718-1807-0717183699ms"];
 const KNOWN_CHARACTERISTIC_UUIDS: string[] = [
-  "abcd1234-5678-1234-5678-abcdef123456",
+  "msvk2111-1199-0717-1718-msvkab211111",
 ];
 
 type DeviceWithDisplayName = Device & { displayName: string };
@@ -54,6 +54,19 @@ const Index = () => {
   const scanTimeoutRef = useRef<any>(null);
   const checkConnTimeoutRef = useRef<any>(null);
   const isMountedRef = useRef<boolean>(true);
+
+  const clearStateData = () => {
+    setScannedDevices([]);
+    setBtState(State.Unknown);
+    setBtConnectionState(false);
+    setConnectedDevice(null);
+    setModalVisible(false);
+    setIsLoading(false);
+    setLoadingMessage("");
+    setPercentUsed("");
+    setPoleUsed("");
+    // setOffUsed("");
+  };
 
   const checkConnection = async (): Promise<Device | null> => {
     if (isMountedRef.current) setIsLoading(true);
@@ -352,8 +365,61 @@ const Index = () => {
 
   const connectToBTDevice = async (device: Device) => {
     try {
-      // 1. Stop scanning before connecting (Crucial for stability)
-      manager.stopDeviceScan();
+      // Basic guards
+      if (!device || !device.id) {
+        showToastMessage("Invalid device selected", "error");
+        return;
+      }
+
+      // Android 12+ requires BLUETOOTH_CONNECT permission to connect
+      if (Platform.OS === "android") {
+        try {
+          const apiLevel = Platform.Version;
+          if (apiLevel >= 31) {
+            const hasConnect = await PermissionsAndroid.check(
+              PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+            );
+            if (!hasConnect) {
+              const granted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+              );
+              if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+                showToastMessage(
+                  "Bluetooth Connect permission required",
+                  "error",
+                );
+                return;
+              }
+            }
+          } else {
+            // Older Android needs location permission to discover/connect
+            const hasLocation = await PermissionsAndroid.check(
+              PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            );
+            if (!hasLocation) {
+              const granted = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+              );
+              if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+                showToastMessage(
+                  "Location permission required to connect",
+                  "error",
+                );
+                return;
+              }
+            }
+          }
+        } catch (permErr) {
+          console.warn("Permission check failed:", permErr);
+        }
+      }
+
+      // 1. Stop scanning before connecting (crucial for stability)
+      try {
+        manager.stopDeviceScan();
+      } catch (e) {
+        // ignore
+      }
 
       setIsLoading(true);
       setLoadingMessage("Connecting to device...");
@@ -364,7 +430,7 @@ const Index = () => {
       // 3. Discover services and characteristics
       await dev.discoverAllServicesAndCharacteristics();
 
-      // 4. Request MTU on Android
+      // 4. Request MTU on Android (best-effort)
       if (Platform.OS === "android") {
         try {
           await dev.requestMTU(512);
@@ -381,17 +447,17 @@ const Index = () => {
 
       // 6. Close modal and show success
       onClose();
+      setOffUsed("");
       showToastMessage("Device connected successfully", "success");
     } catch (error: any) {
       console.error("Connection Error:", error);
 
-      // Reset all state
+      // Reset local state
       if (isMountedRef.current) setConnectedDevice(null);
       if (isMountedRef.current) setBtConnectionState(false);
       if (isMountedRef.current) setIsLoading(false);
       if (isMountedRef.current) setLoadingMessage("");
 
-      // Show error message
       const errorMsg = error?.message || String(error);
       showToastMessage(`Connection failed: ${errorMsg}`, "error");
     }
@@ -461,8 +527,9 @@ const Index = () => {
 
       showToastMessage(`Lokozo machine Successfully turned off`, "success");
 
+      clearStateData();
       // now disconnect cleanly
-      await disconnectDevice();
+      // await disconnectDevice();
     } catch (error: any) {
       const msg = error?.message || String(error);
       showToastMessage(`Failed to turn off Lokozo machine: ${msg}`, "error");
@@ -596,6 +663,12 @@ const Index = () => {
     }
   };
 
+  const getOffButtonStyle = (btnValue: string) => {
+    return offUsed === btnValue
+      ? styles.buttonRedBgColor
+      : styles.buttonGrayBgColor;
+  };
+
   const getPercentButtonStyle = (btnValue: string) => {
     return percentUsed === btnValue
       ? styles.buttonGreenBgColor
@@ -604,7 +677,7 @@ const Index = () => {
 
   const getPoleButtonStyle = (btnValue: string) => {
     return poleUsed === btnValue
-      ? styles.buttonYellowBgColor
+      ? styles.buttonOrangeBgColor
       : styles.buttonGrayBgColor;
   };
 
@@ -653,6 +726,7 @@ const Index = () => {
             resizeMode="contain"
             testID={testID.imageContainerImageTestid}
           />
+          <Text style={styles.title}>PELT</Text>
         </View>
 
         <ScrollView
@@ -728,9 +802,7 @@ const Index = () => {
                     styles.pressableButtonStyle,
                     styles.circleButton,
                     styles.circleButtonMarginVertical,
-                    offUsed === "OFF"
-                      ? styles.buttonRedBgColor
-                      : styles.buttonRedBgColor,
+                    getOffButtonStyle("OFF"),
                     pressed && styles.pressibleCompPressed,
                   ]}
                   android_ripple={styles.pressableAndroidRipple}
@@ -1065,8 +1137,8 @@ const styles = StyleSheet.create({
   buttonGreenBgColor: {
     backgroundColor: "#28d759ff",
   },
-  buttonYellowBgColor: {
-    backgroundColor: "#fffb23",
+  buttonOrangeBgColor: {
+    backgroundColor: "#ffa500",
   },
   secondButtonsContainer: {
     flex: 1,
