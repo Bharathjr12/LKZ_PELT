@@ -5,8 +5,7 @@ import {
   formatBLEError,
   isGATTError,
   isValidBase64,
-  validateBLEConfig,
-  withTimeout,
+  validateBLEConfig
 } from "@/utils/bleUtils";
 import { encode as btoa } from "base-64";
 import * as SplashScreen from "expo-splash-screen";
@@ -417,20 +416,25 @@ const Index = () => {
       const manager = getManager();
 
       // Connect with timeout
-      const connectedDev = await withTimeout(
-        manager.connectToDevice(device.id, {
-          timeout: BLE_CONFIG.CONNECT_TIMEOUT,
-        }),
-        BLE_CONFIG.CONNECT_TIMEOUT,
-        "Connection timeout",
-      );
+      // const connectedDev = await withTimeout(
+      //   manager.connectToDevice(device.id, {
+      //     timeout: BLE_CONFIG.CONNECT_TIMEOUT,
+      //   }),
+      //   BLE_CONFIG.CONNECT_TIMEOUT,
+      //   "Connection timeout",
+      // );
 
+      const connectedDev = await manager.connectToDevice(device.id, {
+        timeout: 10000,
+      });
+
+      await connectedDev.discoverAllServicesAndCharacteristics();
       // Discover services and characteristics
-      await withTimeout(
-        connectedDev.discoverAllServicesAndCharacteristics(),
-        BLE_CONFIG.SERVICE_DISCOVERY_TIMEOUT,
-        "Service discovery timeout",
-      );
+      // await withTimeout(
+      //   connectedDev.discoverAllServicesAndCharacteristics(),
+      //   BLE_CONFIG.SERVICE_DISCOVERY_TIMEOUT,
+      //   "Service discovery timeout",
+      // );
 
       // Request MTU on Android
       if (Platform.OS === "android") {
@@ -553,6 +557,17 @@ const Index = () => {
       const manager = getManager();
 
       // Send command with timeout
+      // await withTimeout(
+      //   manager.writeCharacteristicWithResponseForDevice(
+      //     connectedDevice.id,
+      //     serviceUUID,
+      //     charUUID,
+      //     base64Value,
+      //   ),
+      //   5000,
+      //   "Write timeout",
+      // );
+
       await manager.writeCharacteristicWithResponseForDevice(
         connectedDevice.id,
         serviceUUID,
