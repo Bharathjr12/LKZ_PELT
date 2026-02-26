@@ -553,16 +553,12 @@ const Index = () => {
       const manager = getManager();
 
       // Send command with timeout
-      // await withTimeout(
       await manager.writeCharacteristicWithResponseForDevice(
         connectedDevice.id,
         serviceUUID,
         charUUID,
         base64Value,
       );
-      //   5000,
-      //   "Write timeout",
-      // );
 
       showToastMessage(
         `Successfully sent ${displayLabel} to device`,
