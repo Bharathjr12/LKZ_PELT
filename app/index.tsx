@@ -531,6 +531,16 @@ const Index = () => {
       return;
     }
 
+    if (commandType === "PERCENT") {
+      if (isMountedRef.current) setPercentUsed(displayLabel);
+    }
+    if (commandType === "POLE") {
+      if (isMountedRef.current) setPoleUsed(displayLabel);
+    }
+    if (commandType === "OFF") {
+      if (isMountedRef.current) setOffUsed(displayLabel);
+    }
+
     try {
       // Encode command to Base64
       const base64Value = btoa(command);
@@ -543,16 +553,16 @@ const Index = () => {
       const manager = getManager();
 
       // Send command with timeout
-      await withTimeout(
-        manager.writeCharacteristicWithResponseForDevice(
-          connectedDevice.id,
-          serviceUUID,
-          charUUID,
-          base64Value,
-        ),
-        5000,
-        "Write timeout",
+      // await withTimeout(
+      await manager.writeCharacteristicWithResponseForDevice(
+        connectedDevice.id,
+        serviceUUID,
+        charUUID,
+        base64Value,
       );
+      //   5000,
+      //   "Write timeout",
+      // );
 
       showToastMessage(
         `Successfully sent ${displayLabel} to device`,
@@ -575,14 +585,11 @@ const Index = () => {
 
   // Button click handlers
   const onClickOffButtons = async (btnType: string) => {
-    if (isMountedRef.current) setOffUsed(btnType);
     await sendBLECommand(BLE_COMMANDS.OFF, "OFF", "Turn Off");
     clearStateData();
   };
 
   const onClickPercentButtons = async (btnType: string) => {
-    if (isMountedRef.current) setPercentUsed(btnType);
-
     const commandMap: Record<string, string> = {
       "25%": BLE_COMMANDS.PERCENT_25,
       "50%": BLE_COMMANDS.PERCENT_50,
@@ -595,8 +602,6 @@ const Index = () => {
   };
 
   const onClickPoleButtons = async (btnType: string) => {
-    if (isMountedRef.current) setPoleUsed(btnType);
-
     const command =
       btnType === "POLE UP" ? BLE_COMMANDS.POLE_UP : BLE_COMMANDS.POLE_DOWN;
     await sendBLECommand(command, "POLE", btnType);
