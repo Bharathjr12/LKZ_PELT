@@ -5,7 +5,7 @@ import {
   formatBLEError,
   isGATTError,
   isValidBase64,
-  validateBLEConfig
+  validateBLEConfig,
 } from "@/utils/bleUtils";
 import { encode as btoa } from "base-64";
 import * as SplashScreen from "expo-splash-screen";
