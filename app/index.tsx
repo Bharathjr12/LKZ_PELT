@@ -22,7 +22,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { BleManager, Device, State } from "react-native-ble-plx";
 import { showToast } from "react-native-nitro-toast";
@@ -1073,7 +1073,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pressableButtonStyle: {
-    paddingVertical: 12,
+    paddingVertical: 15,
     paddingHorizontal: 15,
     borderWidth: 0.5,
     borderColor: "#000000ff",
@@ -1090,7 +1090,7 @@ const styles = StyleSheet.create({
   },
   circleButton: {
     borderRadius: 999,
-    paddingVertical: 16,
+    paddingVertical: 18,
   },
   circleButtonMarginVertical: {
     marginVertical: 0,
@@ -1132,16 +1132,15 @@ const styles = StyleSheet.create({
   },
   secondButtonFirstRowContainer: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "space-evenly",
     alignItems: "center",
     gap: 4,
   },
   secondButtonSecondRowContainer: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "space-evenly",
     alignItems: "center",
     gap: 4,
-    flexDirection: "row",
   },
   overlay: {
     flex: 1,
