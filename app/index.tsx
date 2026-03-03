@@ -54,6 +54,19 @@ const Index = () => {
   const checkConnTimeoutRef = useRef<any>(null);
   const isMountedRef = useRef<boolean>(true);
 
+  // Memoized state clearing function
+  const clearStateData = () => {
+    setScannedDevices([]);
+    setBtConnectionState(false);
+    setConnectedDevice(null);
+    setModalVisible(false);
+    setIsLoading(false);
+    setLoadingMessage("");
+    setPercentUsed("");
+    setPoleUsed("");
+    setOffUsed("");
+  };
+
   const checkConnection = async (): Promise<Device | null> => {
     if (isMountedRef.current) setIsLoading(true);
     try {
@@ -130,15 +143,24 @@ const Index = () => {
         }
 
         // Increase Splash Screen time (e.g., 3 seconds)
+        // setTimeout(
+        //   () => hideOriginalSplashShowJSSplashScreen().then(resolve),
+        //   5000,
+        // ),
         SplashScreen.hideAsync();
-        await new Promise(async (resolve) =>
-          setTimeout(
-            () => hideOriginalSplashShowJSSplashScreen().then(resolve),
-            5000,
-          ),
+        await new Promise<void>((resolve) =>
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              setAppIsReady(true);
+            }
+            resolve();
+          }, 1500),
         );
-      } catch (e) {
-        console.warn(e);
+      } catch (error) {
+        console.warn("App initialization error:", error);
+        if (isMountedRef.current) {
+          setAppIsReady(true); // Show UI anyway
+        }
       } finally {
         // Note: setAppIsReady and prepare() are called but not defined in this file
         // Make sure these functions exist or remove them if not needed
@@ -187,10 +209,10 @@ const Index = () => {
     };
   }, []);
 
-  const hideOriginalSplashShowJSSplashScreen = async () => {
-    if (isMountedRef.current) setAppIsReady(true);
-    return true;
-  };
+  // const hideOriginalSplashShowJSSplashScreen = async () => {
+  //   if (isMountedRef.current) setAppIsReady(true);
+  //   return true;
+  // };
 
   const showToastMessage = (
     message: string,
@@ -252,9 +274,11 @@ const Index = () => {
   };
 
   const handleStartScan = async () => {
-    if (isMountedRef.current) setScannedDevices([]);
-    if (isMountedRef.current) setIsLoading(true);
-    if (isMountedRef.current) setLoadingMessage("Initializing Bluetooth...");
+    if (isMountedRef.current) {
+      setScannedDevices([]);
+      setIsLoading(true);
+      setLoadingMessage("Initializing Bluetooth...");
+    }
 
     manager.startDeviceScan(null, null, (error, device) => {
       if (error) {
@@ -373,10 +397,15 @@ const Index = () => {
       }
 
       // 5. Update state
-      if (isMountedRef.current) setConnectedDevice(dev);
-      if (isMountedRef.current) setBtConnectionState(true);
-      if (isMountedRef.current) setIsLoading(false);
-      if (isMountedRef.current) setLoadingMessage("");
+      if (isMountedRef.current) {
+        setConnectedDevice(dev);
+        setBtConnectionState(true);
+        setIsLoading(false);
+        setLoadingMessage("");
+        setOffUsed("");
+        setPercentUsed("");
+        setPoleUsed("");
+      }
 
       // 6. Close modal and show success
       onClose();
@@ -385,10 +414,10 @@ const Index = () => {
       console.error("Connection Error:", error);
 
       // Reset all state
-      if (isMountedRef.current) setConnectedDevice(null);
-      if (isMountedRef.current) setBtConnectionState(false);
-      if (isMountedRef.current) setIsLoading(false);
-      if (isMountedRef.current) setLoadingMessage("");
+      onClose();
+      if (isMountedRef.current) {
+        clearStateData();
+      }
 
       // Show error message
       const errorMsg = error?.message || String(error);
@@ -447,7 +476,6 @@ const Index = () => {
       return;
     }
 
-    if (isMountedRef.current) setOffUsed(btnType);
     try {
       const base64Value = btoa("L");
 
@@ -458,10 +486,11 @@ const Index = () => {
         base64Value,
       );
 
+      if (isMountedRef.current) setOffUsed(btnType);
       showToastMessage(`Lokozo machine Successfully turned off`, "success");
 
       // now disconnect cleanly
-      await disconnectDevice();
+      // await disconnectDevice();
     } catch (error: any) {
       const msg = error?.message || String(error);
       showToastMessage(`Failed to turn off Lokozo machine: ${msg}`, "error");
