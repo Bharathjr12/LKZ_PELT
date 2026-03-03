@@ -534,7 +534,6 @@ const Index = () => {
       return;
     }
 
-    if (isMountedRef.current) setPercentUsed(btnType);
     try {
       // BLE requires data to be sent as Base64 encoded strings
       let valueToSend =
@@ -560,6 +559,7 @@ const Index = () => {
         base64Value,
       );
 
+      if (isMountedRef.current) setPercentUsed(btnType);
       showToastMessage(
         `Successfully sent ${btnType} to Lokozo machine`,
         "success",
@@ -602,7 +602,6 @@ const Index = () => {
       return;
     }
 
-    if (isMountedRef.current) setPoleUsed(btnType);
     try {
       let valueToSend = btnType === "POLE UP" ? "L" : "T";
       const base64Value = btoa(valueToSend);
@@ -614,6 +613,7 @@ const Index = () => {
         base64Value,
       );
 
+      if (isMountedRef.current) setPoleUsed(btnType);
       showToastMessage(
         `Successfully sent ${btnType} to Lokozo machine`,
         "success",
