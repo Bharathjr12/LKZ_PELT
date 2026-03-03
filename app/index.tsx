@@ -813,7 +813,14 @@ const Index = () => {
                 accessibilityLabel="Turn off device"
                 testID={testID.pressableOffTestid}
               >
-                <Text testID={testID.pressableOffTextTestid}>OFF</Text>
+                {offUsed === "OFF" && (
+                  <Text testID={testID.pressableOffTextTestid}>OFF</Text>
+                )}
+                {offUsed !== "OFF" && (
+                  <Text testID={`${testID.pressableOffTextTestid}Second`}>
+                    OFF
+                  </Text>
+                )}
               </Pressable>
               <Pressable
                 onPress={() => {
