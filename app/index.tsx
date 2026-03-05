@@ -489,7 +489,6 @@ const Index = () => {
       if (isMountedRef.current) {
         setOffUsed(btnType);
         if (percentUsed !== "") setPercentUsed("");
-        if (poleUsed !== "") setPoleUsed("");
       }
 
       showToastMessage(`Lokozo machine Successfully turned off`, "success");
@@ -620,10 +619,8 @@ const Index = () => {
         base64Value,
       );
 
-      if (isMountedRef.current) {
-        setPoleUsed(btnType);
-        if (offUsed !== "") setOffUsed("");
-      }
+      if (isMountedRef.current) setPoleUsed(btnType);
+
       showToastMessage(
         `Successfully sent ${btnType} to Lokozo machine`,
         "success",
