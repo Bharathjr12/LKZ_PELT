@@ -486,7 +486,12 @@ const Index = () => {
         base64Value,
       );
 
-      if (isMountedRef.current) setOffUsed(btnType);
+      if (isMountedRef.current) {
+        setOffUsed(btnType);
+        if (percentUsed !== "") setPercentUsed("");
+        if (poleUsed !== "") setPoleUsed("");
+      }
+
       showToastMessage(`Lokozo machine Successfully turned off`, "success");
 
       // now disconnect cleanly
@@ -558,8 +563,10 @@ const Index = () => {
         charUUID,
         base64Value,
       );
-
-      if (isMountedRef.current) setPercentUsed(btnType);
+      if (isMountedRef.current) {
+        setPercentUsed(btnType);
+        if (offUsed !== "") setOffUsed("");
+      }
       showToastMessage(
         `Successfully sent ${btnType} to Lokozo machine`,
         "success",
@@ -613,7 +620,10 @@ const Index = () => {
         base64Value,
       );
 
-      if (isMountedRef.current) setPoleUsed(btnType);
+      if (isMountedRef.current) {
+        setPoleUsed(btnType);
+        if (offUsed !== "") setOffUsed("");
+      }
       showToastMessage(
         `Successfully sent ${btnType} to Lokozo machine`,
         "success",
