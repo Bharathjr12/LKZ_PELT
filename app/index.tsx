@@ -609,7 +609,7 @@ const Index = () => {
     }
 
     try {
-      let valueToSend = btnType === "POLE UP" ? "L" : "T";
+      let valueToSend = btnType === "POLE UP" ? "O" : "T";
       const base64Value = btoa(valueToSend);
 
       await manager.writeCharacteristicWithResponseForDevice(
@@ -766,7 +766,7 @@ const Index = () => {
                 testID={testID.pressableConnectTestid}
               >
                 <Text
-                  style={styles.pressibleText}
+                  style={styles.pressibleBoldText}
                   testID={testID.pressableConnectTextTestid}
                 >
                   Connect
@@ -791,7 +791,7 @@ const Index = () => {
                 testID={testID.pressableStatusTestid}
               >
                 <Text
-                  style={styles.pressibleText}
+                  style={styles.pressibleBoldText}
                   testID={testID.pressableStatusTextTestid}
                 >
                   {btConnectionState ? "Connected" : "Disconnected"}
@@ -821,10 +821,18 @@ const Index = () => {
                 testID={testID.pressableOffTestid}
               >
                 {offUsed === "OFF" && (
-                  <Text testID={testID.pressableOffTextTestid}>OFF</Text>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={testID.pressableOffTextTestid}
+                  >
+                    OFF
+                  </Text>
                 )}
                 {offUsed !== "OFF" && (
-                  <Text testID={`${testID.pressableOffTextTestid}Second`}>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={`${testID.pressableOffTextTestid}Second`}
+                  >
                     OFF
                   </Text>
                 )}
@@ -846,10 +854,18 @@ const Index = () => {
                 testID={testID.pressable25Testid}
               >
                 {percentUsed === "25%" && (
-                  <Text testID={testID.pressable25TextTestid}>25%</Text>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={testID.pressable25TextTestid}
+                  >
+                    25%
+                  </Text>
                 )}
                 {percentUsed !== "25%" && (
-                  <Text testID={`${testID.pressable25TextTestid}Second`}>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={`${testID.pressable25TextTestid}Second`}
+                  >
                     25%
                   </Text>
                 )}
@@ -871,10 +887,18 @@ const Index = () => {
                 testID={testID.pressable50Testid}
               >
                 {percentUsed === "50%" && (
-                  <Text testID={testID.pressable50TextTestid}>50%</Text>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={testID.pressable50TextTestid}
+                  >
+                    50%
+                  </Text>
                 )}
                 {percentUsed !== "50%" && (
-                  <Text testID={`${testID.pressable50TextTestid}Second`}>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={`${testID.pressable50TextTestid}Second`}
+                  >
                     50%
                   </Text>
                 )}
@@ -896,10 +920,18 @@ const Index = () => {
                 testID={testID.pressable75Testid}
               >
                 {percentUsed === "75%" && (
-                  <Text testID={testID.pressable75TextTestid}>75%</Text>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={testID.pressable75TextTestid}
+                  >
+                    75%
+                  </Text>
                 )}
                 {percentUsed !== "75%" && (
-                  <Text testID={`${testID.pressable75TextTestid}Second`}>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={`${testID.pressable75TextTestid}Second`}
+                  >
                     75%
                   </Text>
                 )}
@@ -921,10 +953,18 @@ const Index = () => {
                 testID={testID.pressable100Testid}
               >
                 {percentUsed === "100%" && (
-                  <Text testID={testID.pressable100TextTestid}>100%</Text>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={testID.pressable100TextTestid}
+                  >
+                    100%
+                  </Text>
                 )}
                 {percentUsed !== "100%" && (
-                  <Text testID={`${testID.pressable100TextTestid}Second`}>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={`${testID.pressable100TextTestid}Second`}
+                  >
                     100%
                   </Text>
                 )}
@@ -948,10 +988,18 @@ const Index = () => {
                 testID={testID.pressablePoleupTestid}
               >
                 {poleUsed === "POLE UP" && (
-                  <Text testID={testID.pressablePoleupTextTestid}>POLE UP</Text>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={testID.pressablePoleupTextTestid}
+                  >
+                    POLE UP
+                  </Text>
                 )}
                 {poleUsed !== "POLE UP" && (
-                  <Text testID={`${testID.pressablePoleupTextTestid}Second`}>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={`${testID.pressablePoleupTextTestid}Second`}
+                  >
                     POLE UP
                   </Text>
                 )}
@@ -973,12 +1021,18 @@ const Index = () => {
                 testID={testID.pressablePoledownTestid}
               >
                 {poleUsed === "POLE DOWN" && (
-                  <Text testID={testID.pressablePoledownTextTestid}>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={testID.pressablePoledownTextTestid}
+                  >
                     POLE DOWN
                   </Text>
                 )}
                 {poleUsed !== "POLE DOWN" && (
-                  <Text testID={`${testID.pressablePoledownTextTestid}Second`}>
+                  <Text
+                    style={styles.pressibleNormalText}
+                    testID={`${testID.pressablePoledownTextTestid}Second`}
+                  >
                     POLE DOWN
                   </Text>
                 )}
@@ -1116,9 +1170,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  pressibleText: {
+  pressibleBoldText: {
     fontSize: 12,
     fontWeight: "900",
+    color: "#000000",
+  },
+  pressibleNormalText: {
+    fontSize: 12,
+    fontWeight: "400",
     color: "#000000",
   },
   curvedButton: {
@@ -1237,11 +1296,13 @@ const styles = StyleSheet.create({
   deviceId: {
     fontSize: 12,
     color: "#888",
+    fontWeight: "400",
   },
   rssi: {
     fontSize: 12,
     color: "#4CAF50",
     marginBottom: 8,
+    fontWeight: "400",
   },
   statusBadge: {
     flexDirection: "row",
@@ -1286,5 +1347,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
     color: "#999",
+    fontWeight: "400",
   },
 });
