@@ -804,6 +804,12 @@ const Index = () => {
             testID={testID.buttonContainerBodyTestid}
           >
             <View style={styles.secondButtonFirstRowContainer}>
+              <Text
+                style={styles.titleText}
+                testID={testID.textTitlePercentTestid}
+              >
+                Load Brightness Control
+              </Text>
               <Pressable
                 onPress={() => {
                   onClickOffButtons("OFF");
@@ -969,8 +975,21 @@ const Index = () => {
                   </Text>
                 )}
               </Pressable>
+              {/* <Pressable
+                disabled={true}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Dummy percent"
+                testID={testID.pressableDummyPercentTestid}
+              ></Pressable> */}
             </View>
             <View style={styles.secondButtonSecondRowContainer}>
+              <Text
+                style={styles.titleText}
+                testID={testID.textTitlePoleTestid}
+              >
+                Pneumatic Tower Control
+              </Text>
               <Pressable
                 onPress={() => {
                   onClickPoleButtons("POLE UP");
@@ -992,7 +1011,7 @@ const Index = () => {
                     style={styles.pressibleNormalText}
                     testID={testID.pressablePoleupTextTestid}
                   >
-                    POLE UP
+                    POLE UP / PAUSE
                   </Text>
                 )}
                 {poleUsed !== "POLE UP" && (
@@ -1000,7 +1019,7 @@ const Index = () => {
                     style={styles.pressibleNormalText}
                     testID={`${testID.pressablePoleupTextTestid}Second`}
                   >
-                    POLE UP
+                    POLE UP / PAUSE
                   </Text>
                 )}
               </Pressable>
@@ -1025,7 +1044,7 @@ const Index = () => {
                     style={styles.pressibleNormalText}
                     testID={testID.pressablePoledownTextTestid}
                   >
-                    POLE DOWN
+                    POLE DOWN / PAUSE
                   </Text>
                 )}
                 {poleUsed !== "POLE DOWN" && (
@@ -1033,10 +1052,17 @@ const Index = () => {
                     style={styles.pressibleNormalText}
                     testID={`${testID.pressablePoledownTextTestid}Second`}
                   >
-                    POLE DOWN
+                    POLE DOWN / PAUSE
                   </Text>
                 )}
               </Pressable>
+              <Pressable
+                disabled={true}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Dummy Pole"
+                testID={testID.pressableDummyPoleTestid}
+              ></Pressable>
             </View>
           </View>
         </View>
@@ -1137,8 +1163,8 @@ const styles = StyleSheet.create({
     height: 70,
   },
   headerTitle: {
-    fontSize: 12,
-    fontWeight: "semibold",
+    fontSize: 14,
+    fontWeight: "700",
   },
   ScrollViewMainContainer: {
     flex: 1,
@@ -1173,6 +1199,11 @@ const styles = StyleSheet.create({
   pressibleBoldText: {
     fontSize: 12,
     fontWeight: "900",
+    color: "#000000",
+  },
+  titleText: {
+    fontSize: 14,
+    fontWeight: "700",
     color: "#000000",
   },
   pressibleNormalText: {
@@ -1223,19 +1254,35 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     paddingVertical: 4,
-    gap: 4,
+    // gap: 4,
   },
   secondButtonFirstRowContainer: {
     flex: 1,
-    justifyContent: "space-evenly",
+    // justifyContent: "space-evenly",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 4,
+    // gap: 4,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderLeftWidth: 0.5,
+    borderRightWidth: 0.25,
+    borderColor: "#000000ff",
+    borderRadius: 8,
+    paddingVertical: 20,
   },
   secondButtonSecondRowContainer: {
     flex: 1,
-    justifyContent: "space-evenly",
+    // justifyContent: "space-evenly",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 4,
+    // gap: 4,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderLeftWidth: 0.25,
+    borderRightWidth: 0.5,
+    borderColor: "#000000ff",
+    borderRadius: 8,
+    paddingVertical: 20,
   },
   overlay: {
     flex: 1,
